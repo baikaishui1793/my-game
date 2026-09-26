@@ -1,0 +1,2257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>深渊垂钓</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  background:#05080d;color:#9fb2c4;overflow:hidden;
+  -webkit-user-select:none;user-select:none;touch-action:manipulation}
+.hidden{display:none!important}
+
+#intro{position:fixed;inset:0;background:#000;z-index:300;display:flex;align-items:center;justify-content:center;padding:24px;transition:opacity .6s}
+#introText{max-width:600px;text-align:center;display:flex;flex-direction:column;gap:10px}
+.iline{font-family:"Songti SC",serif;font-size:16px;line-height:1.9;color:#a8bdd2;letter-spacing:2px;opacity:0;transition:opacity .8s}
+.iline.on{opacity:1}
+.iline.b{font-size:19px;color:#dbe8f4;letter-spacing:4px;font-weight:600}
+.iline.r{color:#d88a8a;font-size:17px;letter-spacing:3px}
+
+#select{position:fixed;inset:0;z-index:290;background:radial-gradient(ellipse at 50% 30%,#0c0e14,#000 75%);display:flex;flex-direction:column;align-items:center;padding:40px 16px;overflow-y:auto}
+#select h2{font-family:"Songti SC",serif;font-size:22px;color:#dbe8f4;letter-spacing:8px;margin-bottom:8px}
+#select p{font-size:12px;color:#5a6d80;letter-spacing:3px;margin-bottom:24px}
+.chars{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:900px;width:100%}
+@media(max-width:780px){.chars{grid-template-columns:1fr}}
+.char{background:linear-gradient(170deg,#0e141d,#080c14);border:1px solid #1f2c3c;border-radius:14px;padding:18px;cursor:pointer;transition:.2s;position:relative}
+.char:hover{border-color:#3a5878;transform:translateY(-3px)}
+.char.sel{border-color:#4ec7b8;box-shadow:0 0 30px rgba(60,220,190,.4)}
+.char-av{font-size:52px;text-align:center;line-height:1;margin-bottom:10px}
+.char-name{font-family:"Songti SC",serif;font-size:17px;font-weight:700;letter-spacing:3px;margin-bottom:4px}
+.char-tag{font-size:10px;color:#5a6d80;letter-spacing:2px;margin-bottom:10px}
+.char-desc{font-size:11.5px;color:#8fa8bd;line-height:1.7;padding-top:10px;border-top:1px dashed #1e2d40}
+.char.c1 .char-name{color:#f0b0b0}.char.c2 .char-name{color:#b0d4f0}.char.c3 .char-name{color:#d8c0ff}
+.char.c1 .char-av{color:#e08080}.char.c2 .char-av{color:#80b8e8}.char.c3 .char-av{color:#c0a0ff}
+#confirmBtn{margin-top:24px;padding:14px 50px;background:linear-gradient(160deg,#1a7a6c,#0f5248);border:2px solid #2fae98;color:#b8ffef;border-radius:13px;font-size:15px;font-family:inherit;font-weight:700;letter-spacing:4px;cursor:pointer;opacity:.3;pointer-events:none;transition:.15s}
+#confirmBtn.on{opacity:1;pointer-events:auto}
+
+#game{position:fixed;inset:0;display:flex;flex-direction:column;padding:6px;gap:6px}
+.hud{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.hud .st{background:linear-gradient(160deg,#101c29,#0a131c);border:1px solid #1c2b3d;border-radius:9px;padding:6px 9px}
+.hud .k{font-size:10px;color:#5a6d80;letter-spacing:1px;display:block;margin-bottom:2px}
+.hud .v{font-size:16px;font-weight:700;color:#dbe7f3}
+.hud .st.gold .v{color:#d9a441}.hud .st.debt .v{color:#e06060}
+.hud .st.act .v{color:#3fc9b8}.hud .st.hp .v{color:#6ee0a0}.hud .st.mad .v{color:#b9a2ff}
+@media(max-width:780px){.hud{grid-template-columns:repeat(3,1fr)}}
+
+.map-area{flex:1;position:relative;background:linear-gradient(180deg,#0a1622,#060c14 60%,#030608);
+  border:1px solid #1f3145;border-radius:14px;overflow:auto;padding:14px 10px;min-height:0}
+.map-inner{position:relative;margin:0 auto}
+
+/* 层标题 */
+.layer-tag{position:absolute;font-size:11px;color:#5a7a9a;letter-spacing:3px;
+  padding-left:10px;border-left:3px solid #3a5878;pointer-events:none;user-select:none;z-index:5;
+  background:rgba(5,8,13,.75);padding:2px 8px 2px 10px;border-radius:0 6px 6px 0}
+.layer-tag.current{color:#e8b860;border-color:#e8b860;font-weight:700;background:rgba(40,30,10,.7)}
+
+/* 地图节点 */
+.node{position:absolute;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,#16283a,#0e1a26);border:2px solid #2a4056;cursor:pointer;
+  transition:transform .15s,box-shadow .15s,border-color .15s;user-select:none}
+.node .ico{font-size:22px;line-height:1;margin-bottom:2px;pointer-events:none}
+.node .lbl{font-size:9px;color:#7a8fa2;letter-spacing:1px;pointer-events:none}
+
+/* 可点击 —— 金光脉冲 + 放大 + 高亮描边 + 指示箭头 */
+.node.reachable{
+  border-color:#ffd060;border-width:3px;
+  transform:scale(1.08);
+  animation:nodepulse 1.2s infinite;
+}
+.node.reachable:hover{transform:scale(1.18);z-index:10}
+@keyframes nodepulse{
+  0%,100%{box-shadow:0 0 0 3px rgba(255,208,96,.15), 0 0 24px rgba(255,208,96,.7)}
+  50%{box-shadow:0 0 0 5px rgba(255,208,96,.4), 0 0 40px rgba(255,208,96,1)}
+}
+.node.reachable::before{
+  content:'▲';position:absolute;top:-18px;left:50%;transform:translateX(-50%);
+  color:#ffd060;font-size:12px;animation:arrbob 1s infinite;font-weight:800;
+  text-shadow:0 0 8px #ffd060;
+}
+@keyframes arrbob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(4px)}}
+
+/* 当前所在 */
+.node.current{border-color:#fff;border-width:3px;box-shadow:0 0 28px rgba(255,255,255,.85);z-index:8}
+/* 已访问 */
+.node.visited{opacity:.42;filter:grayscale(.5)}
+.node.visited::after{content:'✓';position:absolute;top:-6px;right:-6px;background:#4a8a6a;color:#fff;
+  width:20px;height:20px;border-radius:50%;font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #05080d}
+/* 不可达 —— 明显变暗 */
+.node.locked{opacity:.28;filter:grayscale(.9);cursor:default}
+.node.locked:hover{transform:none;border-color:#2a4056}
+
+.node.elite{border-color:#c05030}
+.node.elite .lbl{color:#e08060}
+.node.fog{border-color:#7a8fa2;background:linear-gradient(160deg,#2a3540,#1a2028)}
+.node.vortex{border-color:#8b5cf6;background:linear-gradient(160deg,#3a2a5a,#1a1028)}
+.node.hole{border-color:#000;background:linear-gradient(160deg,#1a1a1a,#000)}
+.node.night{border-color:#c0d8f0;background:linear-gradient(160deg,#3a4a6a,#1a2030)}
+.node.market{border-color:#d9a441}
+.node.lighthouse{border-color:#e8b860}
+.node.harbor{border-color:#4ec7b8;background:linear-gradient(160deg,#1a3a4a,#0e2030);box-shadow:0 0 25px rgba(60,220,190,.6)}
+.node.boss{border-color:#a02828;box-shadow:0 0 25px rgba(160,40,40,.7)}
+.node.boss .ico{font-size:26px}
+.node.boss .lbl{color:#e28b8b}
+.node.boss.reachable{border-color:#ff5050;animation:bosspulse 1.1s infinite}
+@keyframes bosspulse{
+  0%,100%{box-shadow:0 0 0 4px rgba(255,80,80,.2), 0 0 30px rgba(255,80,80,.9)}
+  50%{box-shadow:0 0 0 7px rgba(255,80,80,.45), 0 0 55px rgba(255,80,80,1)}
+}
+
+.bottombar{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0}
+.bbtn{flex:1 1 auto;min-width:80px;padding:12px 14px;background:linear-gradient(160deg,#22384f,#16283a);
+  border:2px solid #35516b;color:#d2e4f5;border-radius:11px;font-size:13.5px;font-family:inherit;font-weight:700;
+  letter-spacing:1px;cursor:pointer;transition:.15s;min-height:52px;display:flex;align-items:center;justify-content:center;gap:6px}
+.bbtn:hover:not(:disabled){background:linear-gradient(160deg,#2e5474,#1f3e5a);border-color:#5a8cbb;transform:translateY(-2px)}
+.bbtn:disabled{opacity:.3;cursor:not-allowed}
+
+#battle{position:fixed;inset:0;z-index:100;background:linear-gradient(180deg,#0a1622,#050a10 60%,#020508);
+  display:flex;flex-direction:column;padding:8px;gap:6px}
+.battle-head{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:linear-gradient(160deg,#101c29,#0a131c);border-radius:11px;border:1px solid #1c2b3d}
+.battle-head .lbl{font-size:11.5px;color:#7a8fa2;letter-spacing:2px}
+.battle-head .val{font-size:13px;color:#dbe7f3;font-weight:700}
+.retreat-btn{padding:8px 16px;background:linear-gradient(160deg,#843434,#5a2222);border:1.5px solid #c05555;color:#ffc0c0;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+
+.fish-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;position:relative;min-height:0}
+.fish-avatar{font-size:70px;filter:drop-shadow(0 0 30px currentColor);transition:transform .3s;position:relative}
+.fish-avatar.hit{animation:fishhit .4s}
+@keyframes fishhit{0%,100%{transform:translateX(0)}20%{transform:translateX(-15px) rotate(-5deg)}40%{transform:translateX(15px) rotate(5deg)}60%{transform:translateX(-10px)}80%{transform:translateX(10px)}}
+.fish-name{font-family:"Songti SC",serif;font-size:17px;font-weight:700;color:#d8e6f2;letter-spacing:3px}
+.hpbar-wrap{width:100%;max-width:420px}
+.hpbar{height:22px;background:#070c12;border:1.5px solid #2a4056;border-radius:11px;overflow:hidden;position:relative}
+.hpbar-fill{height:100%;transition:width .35s}
+.hpbar-fill.fish{background:linear-gradient(90deg,#8a2020,#c0392b)}
+.hpbar-fill.player{background:linear-gradient(90deg,#1a6a4a,#4ad8a0)}
+.hpbar-wrap .cap{display:flex;justify-content:space-between;font-size:11px;color:#7a8fa2;margin-bottom:4px}
+
+.intent-box{background:rgba(0,0,0,.5);border:1px solid #2a4056;border-radius:10px;padding:8px 16px;text-align:center;min-width:200px}
+.intent-box .lbl{font-size:10.5px;color:#7a8fa2;letter-spacing:2px;margin-bottom:3px}
+.intent-box .val{font-size:15px;color:#ff9090;font-weight:700}
+.intent-box.hidden-intent .val{color:#b9a2ff;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+.statuses{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:22px}
+.status-chip{padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;background:rgba(0,0,0,.5);border:1px solid}
+.status-chip.poison{color:#7ee08e;border-color:#2a5a3a;background:rgba(30,80,50,.5)}
+.status-chip.weak{color:#d0a8ff;border-color:#5a3a8a;background:rgba(60,30,100,.5)}
+.status-chip.charge{color:#ffd060;border-color:#a08030;background:rgba(80,60,20,.5)}
+
+.hand-area{background:linear-gradient(160deg,#101c29,#0a131c);border:1px solid #1c2b3d;border-radius:11px;padding:8px;margin-top:auto}
+.ap-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 4px}
+.ap-dots{display:flex;gap:4px}
+.ap-dot{width:16px;height:16px;border-radius:50%;background:#3fc9b8;box-shadow:0 0 10px rgba(63,201,184,.7)}
+.ap-dot.used{background:#16222f;box-shadow:none}
+.end-turn{padding:8px 20px;background:linear-gradient(160deg,#1a7a6c,#0f5248);border:1.5px solid #2fae98;color:#b8ffef;border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;letter-spacing:2px;cursor:pointer}
+
+.hand{display:flex;gap:6px;overflow-x:auto;padding:4px;min-height:170px}
+.card{width:130px;min-width:130px;height:165px;border-radius:10px;padding:8px 9px;
+  background:linear-gradient(170deg,#1c2e40,#0e1a26);border:2px solid #35516b;
+  cursor:pointer;transition:.15s;position:relative;display:flex;flex-direction:column;user-select:none}
+.card:hover{transform:translateY(-8px);box-shadow:0 12px 28px rgba(0,0,0,.7)}
+.card.attack{border-color:#c07040;background:linear-gradient(170deg,#2a1e14,#1a0e08)}
+.card.skill{border-color:#5aa0cc;background:linear-gradient(170deg,#122838,#0a1828)}
+.card.power{border-color:#c09020;background:linear-gradient(170deg,#2a2010,#1a1408)}
+.card.curse{border-color:#8a2020;background:linear-gradient(170deg,#2a1010,#180808)}
+.card.r1{border-color:#e0a040}
+.card.r2{border-color:#b080ff;box-shadow:0 0 16px rgba(160,80,255,.4)}
+.card.r3{border-color:#ffd060;box-shadow:0 0 20px rgba(255,208,96,.5)}
+.card.cant{opacity:.42;filter:grayscale(.6);cursor:not-allowed}
+.card .cost{position:absolute;top:-6px;left:-6px;width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(160deg,#1a7a6c,#0f5248);border:2px solid #4ee0c4;color:#c8fff0;
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;z-index:2}
+.card .cname{font-size:12.5px;font-weight:700;color:#e0ecf6;letter-spacing:1px;text-align:center;line-height:1.2;margin-bottom:5px;min-height:30px}
+.card .ctext{font-size:10.5px;color:#a8bccd;line-height:1.4;flex:1;overflow:hidden}
+.card .ctype{font-size:9px;color:#6a8098;letter-spacing:1px;text-align:center;border-top:1px dashed #2a4056;padding-top:4px;margin-top:4px}
+
+#harbor{position:fixed;inset:0;z-index:110;background:radial-gradient(ellipse at 50% 20%,#1a2410,#0a0d08 70%);
+  display:flex;flex-direction:column;padding:10px;overflow-y:auto;gap:10px}
+.harbor-head{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:linear-gradient(160deg,#1a2a10,#0f1808);border:1px solid #3a4a2a;border-radius:11px}
+.harbor-title{font-family:"Songti SC",serif;font-size:19px;color:#d8e8b0;letter-spacing:5px}
+.harbor-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;max-width:900px;margin:0 auto;width:100%}
+.harbor-btn{padding:16px 14px;background:linear-gradient(160deg,#22384f,#16283a);border:2px solid #35516b;color:#d2e4f5;border-radius:12px;font-family:inherit;font-size:13.5px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:70px}
+.harbor-btn:hover{background:linear-gradient(160deg,#2e5474,#1f3e5a);border-color:#5a8cbb;transform:translateY(-2px)}
+.harbor-btn .ico{font-size:24px}
+.harbor-btn.pri{background:linear-gradient(160deg,#1a7a6c,#0f5248);border-color:#2fae98;color:#b8ffef;grid-column:span 2}
+.harbor-btn.pri .ico{font-size:28px}
+
+.cargo-list{margin-top:12px;font-size:12.5px}
+.cargo-list-item{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1b2a3a}
+.cargo-list-item:last-child{border-bottom:none}
+
+.modal{position:fixed;inset:0;z-index:120;background:rgba(3,6,10,.88);display:flex;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(4px)}
+.mbox{background:linear-gradient(180deg,#142230,#0c1620);border:1px solid #26394e;border-radius:14px;
+  width:100%;max-width:640px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 24px 70px rgba(0,0,0,.9)}
+.mhead{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #1c2b3d;background:rgba(0,0,0,.2)}
+.mhead h3{font-size:14.5px;color:#d5e4f2;letter-spacing:1px}
+.mhead button{background:none;border:none;color:#5c7185;font-size:20px;cursor:pointer;padding:2px 8px}
+.mhead button:hover{color:#c3d6e6}
+.mbody{padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:9px}
+.mbody::-webkit-scrollbar{width:5px}
+.mbody::-webkit-scrollbar-thumb{background:#1e2d3f;border-radius:3px}
+
+.opt-btn{background:linear-gradient(160deg,#1c2e40,#132231);border:1.5px solid #2c4459;color:#bdcfe0;
+  padding:14px 16px;border-radius:10px;cursor:pointer;font-family:inherit;font-size:13.5px;
+  font-weight:600;text-align:left;width:100%;line-height:1.5;transition:.15s;display:flex;flex-direction:column;gap:4px}
+.opt-btn:hover{background:linear-gradient(160deg,#254866,#1a3550);border-color:#48789f;color:#eaf5ff;transform:translateX(3px)}
+.opt-btn .ot{font-weight:700;color:#d2e4f5}
+.opt-btn .od{font-size:11.5px;color:#7a8fa2}
+
+.card-pick{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:10px}
+.pick-card{width:140px;height:180px;border-radius:11px;padding:10px;cursor:pointer;transition:.2s;
+  background:linear-gradient(170deg,#1c2e40,#0e1a26);border:2px solid #35516b;
+  display:flex;flex-direction:column;position:relative}
+.pick-card:hover{transform:translateY(-8px) scale(1.03);box-shadow:0 12px 32px rgba(0,0,0,.8)}
+.pick-card.attack{border-color:#c07040}
+.pick-card.skill{border-color:#5aa0cc}
+.pick-card.power{border-color:#c09020}
+.pick-card.r0{border-color:#5a8cbb}
+.pick-card.r1{border-color:#e0a040}
+.pick-card.r2{border-color:#b080ff;box-shadow:0 0 16px rgba(160,80,255,.4)}
+.pick-card.r3{border-color:#ffd060;box-shadow:0 0 20px rgba(255,208,96,.5)}
+.pick-card .cost{position:absolute;top:-6px;left:-6px;width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(160deg,#1a7a6c,#0f5248);border:2px solid #4ee0c4;color:#c8fff0;
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+.pick-card .rarity{position:absolute;top:6px;right:8px;font-size:9px;letter-spacing:2px;padding:2px 7px;border-radius:8px;background:rgba(0,0,0,.5)}
+.pick-card .rarity.r0{color:#8ec8e8}
+.pick-card .rarity.r1{color:#f0c060}
+.pick-card .rarity.r2{color:#c9a8ff}
+.pick-card .rarity.r3{color:#ffd060}
+.pick-card .cname{font-size:12.5px;font-weight:700;color:#e0ecf6;text-align:center;margin-top:16px;min-height:30px;letter-spacing:1px;line-height:1.2}
+
+/* ============ 特效层 ============ */
+#fxLayer{position:fixed;inset:0;pointer-events:none;z-index:200}
+
+/* 全部改为 fixed，避免相对 body 定位时随滚动漂移 */
+.fx-text{position:fixed;font-size:26px;font-weight:800;text-shadow:0 0 20px currentColor;animation:fxup 1.2s ease-out forwards;pointer-events:none;z-index:205}
+@keyframes fxup{0%{opacity:0;transform:translateY(0) scale(.7)}20%{opacity:1;transform:translateY(-10px) scale(1.25)}100%{opacity:0;transform:translateY(-90px) scale(1)}}
+.fx-text.dmg{color:#ff5555}
+.fx-text.heal{color:#6ee0a0}
+.fx-text.mad{color:#b9a2ff}
+.fx-text.gold{color:#d9a441}
+.fx-text.shield{color:#88ccff;text-shadow:0 0 24px #4080c0}
+.fx-text.draw{color:#c9a8ff;text-shadow:0 0 24px #9060ff;font-size:22px}
+
+.screen-flash{position:fixed;inset:0;pointer-events:none;z-index:150;animation:flashfade .35s ease-out forwards}
+.screen-flash.attack{background:radial-gradient(circle at 50% 42%, rgba(255,70,70,.4), transparent 65%)}
+.screen-flash.shield{background:radial-gradient(circle at 50% 55%, rgba(80,160,255,.4), transparent 65%)}
+.screen-flash.draw{background:radial-gradient(circle at 50% 80%, rgba(180,120,255,.35), transparent 65%)}
+@keyframes flashfade{0%{opacity:1}100%{opacity:0}}
+
+.slash{position:fixed;pointer-events:none;width:80px;height:80px;border-radius:50%;z-index:206;
+  background:radial-gradient(circle, rgba(255,120,120,.9) 0%, transparent 70%);
+  animation:slashout .45s ease-out forwards}
+@keyframes slashout{
+  0%{transform:scale(0) rotate(0);opacity:1}
+  60%{transform:scale(1.4) rotate(60deg);opacity:.9}
+  100%{transform:scale(2) rotate(120deg);opacity:0}
+}
+.shield-burst{position:fixed;pointer-events:none;width:100px;height:100px;border-radius:50%;z-index:206;
+  border:3px solid #88ccff;box-shadow:0 0 30px #4080c0 inset, 0 0 30px #4080c0;
+  animation:shieldout .5s ease-out forwards}
+@keyframes shieldout{
+  0%{transform:scale(0.3);opacity:1}
+  100%{transform:scale(1.5);opacity:0}
+}
+.draw-fly{position:fixed;pointer-events:none;z-index:210;
+  width:32px;height:44px;border-radius:5px;
+  background:linear-gradient(170deg,#3a5a80,#1a2e48);
+  border:2px solid #c9a8ff;
+  box-shadow:0 0 18px rgba(180,120,255,.9);
+  animation:cardflyin .55s ease-out forwards}
+@keyframes cardflyin{
+  0%{opacity:0;transform:translateY(-40px) scale(.6) rotate(-15deg)}
+  30%{opacity:1}
+  100%{opacity:0;transform:translateY(80px) scale(.85) rotate(8deg)}
+}
+
+.shake{animation:shake-s .4s}
+@keyframes shake-s{0%,100%{transform:translate(0,0)}25%{transform:translate(-6px,2px)}50%{transform:translate(6px,-2px)}75%{transform:translate(-4px,-2px)}}
+
+#mad1,#mad2,#mad3{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity 1s}
+#mad1{z-index:40;background:radial-gradient(ellipse at 50% 50%,transparent 40%,rgba(140,0,0,.55) 100%)}
+#mad2{z-index:41;background:repeating-linear-gradient(0deg,rgba(255,0,0,.035) 0,rgba(255,0,0,.035) 1px,transparent 1px,transparent 3px)}
+#mad3{z-index:42;background:radial-gradient(ellipse at 50% 50%,transparent 50%,rgba(180,0,0,.4) 100%);animation:mp 2.5s infinite}
+@keyframes mp{0%,100%{opacity:.5}50%{opacity:.9}}
+
+#ending{position:fixed;inset:0;z-index:250;background:rgba(3,4,7,.97);display:flex;align-items:center;justify-content:center;padding:20px}
+#ending .box{max-width:520px;text-align:center;display:flex;flex-direction:column;gap:20px;align-items:center}
+#ending h1{font-size:26px;color:#c0392b;letter-spacing:10px;font-weight:800;text-shadow:0 0 40px rgba(180,40,40,.7)}
+#ending p{font-size:13px;line-height:2;color:#8b9eb2;white-space:pre-line}
+#ending button{padding:14px 44px;background:linear-gradient(160deg,#1b3247,#122436);border:1.5px solid #2e5474;color:#b7d4ea;border-radius:11px;font-family:inherit;font-size:14px;letter-spacing:3px;cursor:pointer;font-weight:600}
+
+@media(max-width:780px){
+  body{font-size:13px}
+  .hud .v{font-size:14px}
+  .node .ico{font-size:18px}
+  .node .lbl{font-size:8px}
+  .hand{min-height:145px}
+  .card{width:105px;min-width:105px;height:140px;padding:7px}
+  .card .cname{font-size:11px;min-height:26px;margin-bottom:3px}
+  .card .ctext{font-size:9.5px;line-height:1.35}
+  .card .cost{width:22px;height:22px;font-size:12px}
+  .pick-card{width:120px;height:155px}
+  .fish-avatar{font-size:60px}
+}
+</style>
+</head>
+<body>
+
+<div id="mad1"></div><div id="mad2"></div><div id="mad3"></div>
+<div id="fxLayer"></div>
+
+<div id="intro"><div id="introText"></div></div>
+
+<div id="select" class="hidden">
+  <h2>选 择 你 的 身 份</h2>
+  <p>三个人。三种活法。都活不过七天。</p>
+  <div class="chars" id="charList"></div>
+  <button id="confirmBtn">确 认 身 份</button>
+</div>
+
+<div id="game" class="hidden">
+  <div class="hud">
+    <div class="st act"><span class="k">行动点</span><span class="v" id="hAP">21/21</span></div>
+    <div class="st gold"><span class="k">金币</span><span class="v" id="hMoney">0</span></div>
+    <div class="st debt"><span class="k">债务</span><span class="v" id="hDebt">300</span></div>
+    <div class="st hp"><span class="k">完整度</span><span class="v" id="hHP">100</span></div>
+    <div class="st mad"><span class="k">疯狂</span><span class="v" id="hMad">0</span></div>
+    <div class="st"><span class="k">期数</span><span class="v" id="hPeriod">1</span></div>
+  </div>
+  <div class="map-area" id="mapArea">
+    <div class="map-inner" id="mapInner">
+      <svg class="map-svg" id="mapSvg" style="position:absolute;top:0;left:0;pointer-events:none"></svg>
+      <div id="layers" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
+    </div>
+  </div>
+  <div class="bottombar">
+    <button class="bbtn" id="btnHarbor">⚓ 回港</button>
+    <button class="bbtn" id="btnCargo">📦 货舱</button>
+    <button class="bbtn" id="btnDeck">🎴 牌组</button>
+    <button class="bbtn" id="btnBag">🎒 道具</button>
+    <button class="bbtn" id="btnStats">📊 统计</button>
+  </div>
+</div>
+
+<div id="battle" class="hidden">
+  <div class="battle-head">
+    <div><span class="lbl">遭遇战 · </span><span class="val" id="bArea">近岸浅滩</span></div>
+    <div><span class="lbl">回合 </span><span class="val" id="bRound">1</span></div>
+    <button class="retreat-btn" id="btnRetreat">💨 撤退</button>
+  </div>
+  <div class="fish-area">
+    <div class="fish-avatar" id="bFishAv">🐟</div>
+    <div class="fish-name" id="bFishName">沙丁鱼</div>
+    <div class="hpbar-wrap">
+      <div class="cap"><span>鱼的体力</span><span id="bFishHpTxt">20 / 20</span></div>
+      <div class="hpbar"><div class="hpbar-fill fish" id="bFishHpBar" style="width:100%"></div></div>
+    </div>
+    <div class="intent-box" id="bIntentBox">
+      <div class="lbl">意图</div>
+      <div class="val" id="bIntent">挣扎 (5 张力)</div>
+    </div>
+    <div class="statuses" id="bFishStatuses"></div>
+    <div class="hpbar-wrap" style="margin-top:14px">
+      <div class="cap"><span>你的完整度</span><span id="bPlayerHpTxt">100 / 100</span></div>
+      <div class="hpbar"><div class="hpbar-fill player" id="bPlayerHpBar" style="width:100%"></div></div>
+    </div>
+    <div class="statuses" id="bPlayerStatuses"></div>
+  </div>
+  <div class="hand-area">
+    <div class="ap-row">
+      <div class="ap-dots" id="apDots"></div>
+      <button class="end-turn" id="btnEndTurn">结束回合</button>
+    </div>
+    <div class="hand" id="hand"></div>
+  </div>
+</div>
+
+<div id="harbor" class="hidden">
+  <div class="harbor-head">
+    <div class="harbor-title">⚓ 港 口</div>
+    <div><span style="color:#7a8fa2;font-size:12px">剩余行动 </span><span style="color:#3fc9b8;font-weight:700" id="hHarborAP">21</span></div>
+  </div>
+  <div class="harbor-actions">
+    <button class="harbor-btn" onclick="openCargoModal()"><span class="ico">📦</span>货舱</button>
+    <button class="harbor-btn" onclick="openBagModal()"><span class="ico">🎒</span>道具</button>
+    <button class="harbor-btn" onclick="openTavern()"><span class="ico">🍺</span>酒馆</button>
+    <button class="harbor-btn" onclick="openShop()"><span class="ico">🛒</span>商店</button>
+    <button class="harbor-btn" onclick="openNPCs()"><span class="ico">👥</span>人物</button>
+    <button class="harbor-btn" onclick="openRepair()"><span class="ico">🔧</span>修船</button>
+    <button class="harbor-btn pri" id="btnReturnSea" onclick="returnToSea()"><span class="ico">⚓</span>再次出海（-1 行动）</button>
+  </div>
+</div>
+
+<div id="modal" class="modal hidden">
+  <div class="mbox">
+    <div class="mhead"><h3 id="mTitle"></h3><button onclick="closeModal()">✕</button></div>
+    <div class="mbody" id="mBody"></div>
+  </div>
+</div>
+
+<div id="ending" class="hidden">
+  <div class="box">
+    <h1 id="endTitle"></h1>
+    <p id="endText"></p>
+    <button onclick="location.reload()">重 新 开 始</button>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   工具函数
+   ========================================================= */
+function $(id){return document.getElementById(id)}
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+function cl(v,a,b){return Math.max(a,Math.min(b,v))}
+function chance(p){return Math.random()<p}
+
+/* =========================================================
+   数据表
+   ========================================================= */
+var AREAS=[
+  {name:'近岸浅滩'},{name:'近海'},{name:'远海'},{name:'深渊边缘'},{name:'无尽深渊'}
+];
+
+var CARDS = {
+  pao:{name:'抛竿',cost:1,type:'attack',rarity:0,text:'造成 6 疲劳'},
+  ti:{name:'提竿',cost:1,type:'attack',rarity:0,text:'造成 4 疲劳；抽 1 张'},
+  liu:{name:'溜鱼',cost:1,type:'skill',rarity:0,text:'获得 5 格挡'},
+  wen:{name:'稳住',cost:1,type:'skill',rarity:0,text:'获得 8 格挡'},
+  quan:{name:'重拳',cost:1,type:'attack',rarity:0,text:'造成 9 疲劳；自受 2 张力',role:'abuser'},
+  tie:{name:'铁膀胱',cost:1,type:'skill',rarity:0,text:'获得 12 格挡',role:'holder'},
+  feng:{name:'疯狂一搏',cost:0,type:'attack',rarity:0,text:'随机 5~18 疲劳；+3 疯狂',role:'madman'},
+  jie:{name:'借来的力气',cost:1,type:'skill',rarity:0,text:'获得 6 格挡；+2 疯狂'},
+  jiao:{name:'焦虑的等待',cost:1,type:'skill',rarity:0,text:'抽 2 张；失去 3 完整度'},
+  wang:{name:'残破的渔网',cost:1,type:'attack',rarity:0,text:'造成 5 疲劳；无视格挡'},
+  jiu:{name:'酒壮怂人胆',cost:0,type:'skill',rarity:0,text:'恢复 4 完整度；+2 疯狂'},
+  du:{name:'赌一把',cost:1,type:'attack',rarity:0,text:'随机 3~12 疲劳',gambler:true},
+  zhai:{name:'债主的目光',cost:1,type:'skill',rarity:0,text:'本回合攻击 +2；+1 疯狂'},
+  qian:{name:'浅海的回响',cost:1,type:'skill',rarity:0,text:'暴露意图 2 回合'},
+  chen:{name:'沉重的锚',cost:1,type:'skill',rarity:0,text:'获得 7 格挡；本回合不能出攻击'},
+  zhi:{name:'深海直觉',cost:1,type:'skill',rarity:0,text:'抽 2 张；鱼<50% 血再抽 1'},
+  jiaoX:{name:'侥幸心理',cost:0,type:'skill',rarity:0,text:'本回合首次受伤减半'},
+  liang:{name:'亮片',cost:1,type:'attack',rarity:0,text:'造成 5 疲劳；鱼静止时改为 12'},
+  dawo:{name:'打窝',cost:1,type:'skill',rarity:0,text:'施加 3 层中毒；抽 1 张'},
+  shipao:{name:'试抛',cost:0,type:'attack',rarity:0,text:'造成 2 疲劳；抽 1 张'},
+  guan:{name:'观察水面',cost:0,type:'skill',rarity:0,text:'暴露意图 1 回合；抽 1 张'},
+  tieb:{name:'铁板',cost:1,type:'attack',rarity:0,text:'造成 7 疲劳；深渊海域改为 12'},
+  chaow:{name:'抄网',cost:1,type:'attack',rarity:0,text:'鱼<30% 血造成 15；否则 5'},
+  shun:{name:'顺风抛投',cost:1,type:'attack',rarity:0,text:'造成 6 疲劳；晴天改为 9'},
+  zhaiG:{name:'摘钩器',cost:0,type:'skill',rarity:0,text:'移除鱼 1 个状态；抽 1 张'},
+  huan:{name:'换钓位',cost:1,type:'skill',rarity:0,text:'弃所有手牌；抽相同数 +1'},
+  huo:{name:'活饵',cost:1,type:'attack',rarity:0,text:'造成 4 疲劳；鱼下回合意图延迟'},
+  zhaiZ:{name:'债务转移',cost:1,type:'attack',rarity:1,text:'造成 8 疲劳；未受伤则 +5 疯狂再 8'},
+  xian:{name:'疯狂献祭',cost:0,type:'attack',rarity:1,text:'失去 15 完整度；造成 20 疲劳'},
+  huanX:{name:'幻象之钩',cost:1,type:'attack',rarity:1,text:'造成 6 疲劳；疯狂≥30 改为 15'},
+  leng:{name:'冷血',cost:1,type:'skill',rarity:1,text:'抽 2 张；本回合攻击 +3'},
+  po:{name:'破碎的回忆',cost:2,type:'attack',rarity:1,text:'造成 10 疲劳；抽 1；+3 疯狂'},
+  dutu:{name:'赌徒的直觉',cost:1,type:'skill',rarity:1,text:'随机 1 张手牌费用归 0'},
+  shen:{name:'深渊之握',cost:2,type:'attack',rarity:1,text:'造成 12 疲劳；无视格挡'},
+  qianZ:{name:'欠债的代价',cost:0,type:'skill',rarity:1,text:'恢复 8 完整度；下回合 AP -1'},
+  leiwa:{name:'雷蛙炸水',cost:2,type:'attack',rarity:1,text:'造成 14 疲劳；无视躲闪'},
+  jing:{name:'精准打窝',cost:1,type:'skill',rarity:1,text:'施加 6 层中毒；抽 1 张'},
+  dali:{name:'大力出奇迹',cost:2,type:'attack',rarity:1,text:'造成 18 疲劳；本回合受伤 +50%'},
+  manyao:{name:'慢摇铁板',cost:1,type:'attack',rarity:1,text:'造成 3 疲劳；施加 2 虚弱；抽 1'},
+  chou:{name:'抽停抽',cost:2,type:'attack',rarity:1,text:'造成 5 疲劳 ×3'},
+  yong:{name:'永不空军',cost:0,type:'skill',rarity:1,text:'本回合未出攻击则抽 2 张'},
+  you:{name:'诱惑大师',cost:1,type:'skill',rarity:1,text:'每层中毒造成 2 疲劳（上限 15）'},
+  shenY:{name:'深水慢摇',cost:1,type:'attack',rarity:1,text:'造成 5 疲劳；深渊海域改为 15'},
+  xianZ:{name:'献祭之钩',cost:0,type:'attack',rarity:2,text:'失去 25 完整度；造成 30 疲劳'},
+  ni:{name:'深海呢喃',cost:1,type:'attack',rarity:2,text:'造成 8 疲劳；+8 疯狂；抽 2 张'},
+  shi:{name:'时间的沉没',cost:2,type:'skill',rarity:2,text:'跳过鱼的下 1 回合'},
+  yiwang:{name:'一网打尽',cost:3,type:'attack',rarity:2,text:'造成 30 疲劳'},
+  fengz:{name:'疯狂增幅',cost:1,type:'power',rarity:2,text:'每 10 疯狂 +2 全局疲劳'},
+  dubo:{name:'赌上一切',cost:2,type:'attack',rarity:2,text:'造成 45 疲劳；鱼未死则本场失败',gambler:true},
+  minuo:{name:'米诺连打',cost:2,type:'attack',rarity:2,text:'造成 4 疲劳 ×4'},
+  dawoX:{name:'打窝仙人',cost:1,type:'skill',rarity:2,text:'施加 10 层中毒'},
+  qie:{name:'切线',cost:1,type:'attack',rarity:2,text:'造成 22 疲劳；自己受 12 张力'},
+  baohu:{name:'爆护',cost:3,type:'attack',rarity:2,text:'造成 25 疲劳；本场出 15 张牌改为 40'},
+  manyD:{name:'慢摇叠浪',cost:2,type:'attack',rarity:2,text:'造成 3 疲劳 ×4；每次命中鱼虚弱 +1'},
+  ren:{name:'人打窝',cost:1,type:'skill',rarity:2,text:'失去 10 完整度；抽 3 张；+3 疯狂'},
+  yuwang:{name:'鱼之王的记忆',cost:2,type:'power',rarity:3,text:'本场战斗所有疲劳 +8'},
+  shenX:{name:'深渊之心',cost:1,type:'power',rarity:3,text:'每张诅咒使本场攻击 +3'},
+  chaox:{name:'潮汐主宰',cost:3,type:'skill',rarity:3,text:'造成 40 疲劳；恢复 20 完整度'},
+  quancun:{name:'全村吃饭',cost:2,type:'attack',rarity:3,text:'造成 45 疲劳；本场唯一攻击机会'},
+  dagui:{name:'传奇打龟',cost:0,type:'skill',rarity:3,text:'造成 0；+10 疯狂；抽 5 张'},
+  shi10:{name:'十路九空',cost:1,type:'attack',rarity:3,text:'造成 8 疲劳 ×2；本回合未出其他牌改为 25 ×2'},
+  ying:{name:'硬币决斗',cost:1,type:'attack',rarity:0,text:'正面 15 疲劳，反面自受 10 张力',gambler:true},
+  haod:{name:'豪赌',cost:0,type:'attack',rarity:0,text:'弃所有手牌；每弃 1 张造成 8 疲劳',gambler:true},
+  beishui:{name:'背水一战',cost:1,type:'attack',rarity:0,text:'完整度<30% 时本回合伤害 ×2'},
+  ming:{name:'命运的骰子',cost:1,type:'attack',rarity:1,text:'1d6：1-2 自受 15；3-4 造 15；5-6 造 30',gambler:true},
+  eluo:{name:'俄罗斯轮盘',cost:2,type:'attack',rarity:1,text:'1/6 本场失败；否则造成 40 疲劳',gambler:true},
+  quanya:{name:'全押',cost:2,type:'attack',rarity:1,text:'消耗所有金币；每 100 金造成 1 疲劳',gambler:true},
+  zuihou:{name:'最后一搏',cost:1,type:'attack',rarity:1,text:'每损失 1 完整度造成 1 疲劳',gambler:true},
+  san:{name:'三张牌',cost:1,type:'attack',rarity:2,text:'随机：5 / 20 / 50 疲劳',gambler:true},
+  pochan:{name:'破产',cost:0,type:'skill',rarity:2,text:'失去所有金币；每 200 金恢复 20 完整度',gambler:true},
+  siwang:{name:'死亡赌局',cost:2,type:'attack',rarity:2,text:'已出 3 张赌狗则 60 疲劳；否则自受 25 张力',gambler:true},
+  linghun:{name:'灵魂抵押',cost:1,type:'attack',rarity:3,text:'+25 疯狂；造成 80 疲劳',gambler:true},
+  zuihouY:{name:'最后一钓',cost:3,type:'attack',rarity:3,text:'1d10：1=本场失败；2-9=20×点数；10=200',gambler:true},
+  baonu:{name:'暴怒冲拳',cost:1,type:'attack',rarity:1,text:'造成 7 疲劳；本回合受伤改为 16',role:'abuser'},
+  buken:{name:'不肯放手',cost:1,type:'attack',rarity:2,text:'造成 8 疲劳；鱼逃脱则直接上钩（每场一次）',role:'abuser'},
+  baoli:{name:'暴力垂钓',cost:2,type:'attack',rarity:2,text:'造成 6 疲劳 ×3；每次 +1 疯狂',role:'abuser'},
+  sishou:{name:'死守钓位',cost:1,type:'skill',rarity:1,text:'获得 10 格挡；本回合不能出攻击',role:'holder'},
+  cun:{name:'寸步不离',cost:2,type:'skill',rarity:1,text:'获得 15 格挡；抽 1 张',role:'holder'},
+  guixi:{name:'龟息大法',cost:1,type:'skill',rarity:2,text:'恢复 12 完整度；下回合 AP +1',role:'holder'},
+  qianri:{name:'千日守候',cost:2,type:'power',rarity:2,text:'每回合结束恢复 4 完整度',role:'holder'},
+  xianshen:{name:'献身',cost:0,type:'skill',rarity:1,text:'失去 15 完整度；抽 3 张；本回合伤害 +3',role:'madman'},
+  jingshen:{name:'精神分裂',cost:1,type:'skill',rarity:1,text:'复制上一张打出的牌',role:'madman'},
+  gongzhen:{name:'深渊共振',cost:1,type:'power',rarity:2,text:'每 10 疯狂使本场攻击 +1',role:'madman'},
+  buke:{name:'不可名状',cost:2,type:'attack',rarity:2,text:'随机：40 疲劳/恢复 30/弃牌/+20 疯狂',role:'madman'},
+  chenzhong:{name:'沉重的负担',cost:1,type:'curse',rarity:0,text:'无效果'},
+  shikong:{name:'失控',cost:1,type:'curse',rarity:0,text:'对鱼和自己各造成 5 伤害'},
+  huanjue:{name:'幻觉',cost:1,type:'curse',rarity:0,text:'随机：抽 2 张或 -5 完整度'},
+  shoudou:{name:'手抖',cost:0,type:'curse',rarity:0,text:'抽 1 张；本回合攻击 -2'},
+  chenlun:{name:'沉沦',cost:1,type:'curse',rarity:0,text:'回合结束 -3 完整度'},
+  niY:{name:'深渊的呢喃',cost:1,type:'curse',rarity:0,text:'+3 疯狂'},
+  kong:{name:'空空如也',cost:3,type:'curse',rarity:0,text:'无效果'},
+  mao:{name:'沉重的锚',cost:2,type:'curse',rarity:0,text:'获得 5 格挡；弃 1 张手牌'},
+  kunhuo:{name:'困惑',cost:1,type:'curse',rarity:0,text:'随机 1 张手牌费用 +2'},
+  kongju:{name:'恐惧幻觉',cost:1,type:'curse',rarity:0,text:'每回合结束 -1 完整度'}
+};
+
+var FISHES=[
+  [{name:'沙丁鱼',icon:'🐟',hp:20,actions:[{name:'挣扎',dmg:5}]},
+   {name:'花蛤',icon:'🐚',hp:25,actions:[{name:'闭合',block:6}]},
+   {name:'海星',icon:'⭐',hp:30,actions:[{name:'吸附',dmg:4,draw:1}]},
+   {name:'小鲷鱼',icon:'🐠',hp:35,actions:[{name:'游窜',dmg:6}]},
+   {name:'章鱼幼崽',icon:'🐙',hp:40,actions:[{name:'喷墨',dmg:3,slow:1}]}],
+  [{name:'黄鳍鲷',icon:'🐟',hp:40,actions:[{name:'挣扎',dmg:5},{name:'冲刺',dmg:8}]},
+   {name:'鲈鱼',icon:'🐟',hp:50,actions:[{name:'躲闪',debuff:true},{name:'反击',dmg:7}]},
+   {name:'鱿鱼',icon:'🦑',hp:55,actions:[{name:'喷墨',dmg:4,hide:true},{name:'缠绕',dmg:6}]},
+   {name:'海鳗',icon:'🐍',hp:65,actions:[{name:'缠绕',dmg:5,draw:1},{name:'静止',heal:5}]},
+   {name:'石斑',icon:'🐡',hp:70,actions:[{name:'重击',dmg:12},{name:'淤守',block:8}]}],
+  [{name:'大眼鲷',icon:'🐟',hp:70,actions:[{name:'瞪眼',dmg:7},{name:'游动',dmg:5}]},
+   {name:'金枪鱼',icon:'🐟',hp:90,actions:[{name:'猛冲',dmg:12},{name:'蓄力',charge:20},{name:'拖拽',dmg:8}]},
+   {name:'旗鱼',icon:'🐟',hp:100,actions:[{name:'冲礁',dmg:10},{name:'跳钩',discard:true},{name:'游刺',dmg:6}]},
+   {name:'蓝鳍金枪鱼',icon:'🐟',hp:110,actions:[{name:'高速',dmg:10,pierce:true},{name:'撞击',dmg:14}]},
+   {name:'皇带鱼',icon:'🐍',hp:120,actions:[{name:'缠绕',dmg:8,draw:1},{name:'闪耀',dmg:4},{name:'撞击',dmg:12}]}],
+  [{name:'灯笼鱼',icon:'🏮',hp:110,actions:[{name:'诱饵',dmg:8},{name:'撕咬',dmg:10},{name:'黑暗',hide:true},{name:'装死',heal:15}]},
+   {name:'尖牙鱼',icon:'🦈',hp:130,actions:[{name:'猛咬',dmg:14},{name:'流血',dmg:8},{name:'咆哮',mad:3}]},
+   {name:'巨型乌贼触手',icon:'🦑',hp:140,actions:[{name:'缠绕',dmg:10},{name:'喷墨',hide:true},{name:'抽打',dmg:12},{name:'反击',dmg:6}]},
+   {name:'幽灵鲨',icon:'🦈',hp:150,actions:[{name:'穿透',dmg:10,pierce:true},{name:'恐惧',mad:5},{name:'嗜血',dmg:8,heal:5}]},
+   {name:'深海鮟鱇',icon:'🐡',hp:160,actions:[{name:'吞噬',discard:true},{name:'猛扑',dmg:12},{name:'低吼',mad:3},{name:'嘴咬',dmg:16}]}],
+  [{name:'无光水母',icon:'🎐',hp:150,actions:[{name:'触须',dmg:14},{name:'放电',dmg:10,slow:1},{name:'漂移',block:10},{name:'发光',mad:5}]},
+   {name:'星海鮟鱇',icon:'🌌',hp:180,actions:[{name:'诱饵',dmg:12},{name:'撕咬',dmg:16},{name:'黑暗',hide:true},{name:'吞噬',discard:true},{name:'尖叫',mad:8}]},
+   {name:'骨鲸残躯',icon:'🐋',hp:200,actions:[{name:'重击',dmg:20},{name:'骨甲',block:15},{name:'召唤',dmg:8},{name:'鲸鸣',mad:6}]},
+   {name:'虚空鳐',icon:'👁️',hp:220,actions:[{name:'相位',dmg:12,pierce:true},{name:'凝视',mad:8},{name:'撕裂',dmg:16},{name:'增殖',heal:10},{name:'呢喃',slow:1}]},
+   {name:'不可名状之物',icon:'🌑',hp:250,actions:[{name:'毁灭',dmg:22},{name:'狂怒',dmg:18,mad:5}]}]
+];
+
+var EVENTS=[
+  [
+    {title:'漂浮的木箱',text:'一个半沉的木箱漂浮在水面上。',opts:[
+      {t:'打开木箱',d:'+50~150 金',fn:function(){S.money+=ri(50,150);save()}},
+      {t:'踢回海里',d:'+2 疯狂',fn:function(){addMad(2)}},
+      {t:'绕开',d:'无事',fn:function(){}}]},
+    {title:'老渔夫的骸骨',text:'一具渔夫的骸骨靠在礁石上。',opts:[
+      {t:'安葬他',d:'+1 张普通卡',fn:function(){giveCard(0)}},
+      {t:'搜身',d:'+80 金 +3 疯狂',fn:function(){S.money+=80;addMad(3)}},
+      {t:'离开',d:'无事',fn:function(){}}]},
+    {title:'岸边的小孩',text:'一个小孩看着你的鱼竿。',opts:[
+      {t:'教他钓鱼',d:'+3 疯狂 -10 完整度',fn:function(){addMad(3);S.hp=Math.max(1,S.hp-10);save()}},
+      {t:'赶走他',d:'无事',fn:function(){}},
+      {t:'送他一条鱼',d:'-20 金 +1 道具',fn:function(){S.money-=20;S.bag.push(pickBagItem());save()}}]},
+    {title:'破旧的灯塔',text:'一座废弃的灯塔。',opts:[
+      {t:'爬上去',d:'无事',fn:function(){}},
+      {t:'绕开',d:'无事',fn:function(){}},
+      {t:'检查设备',d:'+1 稀有卡 +2 疯狂',fn:function(){giveCard(1);addMad(2)}}]},
+    {title:'冲上岸的瓶子',text:'一个塞着软木塞的瓶子。',opts:[
+      {t:'打开',d:'+1 诅咒 +50 金',fn:function(){addCurse();S.money+=50;save()}},
+      {t:'丢回海里',d:'+3 疯狂',fn:function(){addMad(3)}},
+      {t:'收藏',d:'+1 诅咒',fn:function(){addCurse()}}]}
+  ],
+  [
+    {title:'迷路的渔船',text:'一艘渔船在雾中迷失方向。',opts:[
+      {t:'指路',d:'+200 金',fn:function(){S.money+=200;save()}},
+      {t:'抢走补给',d:'+1 诅咒 +1 稀有',fn:function(){addCurse();giveCard(1)}},
+      {t:'无视',d:'无事',fn:function(){}}]},
+    {title:'海豚群',text:'一群海豚在船舷边跳跃。',opts:[
+      {t:'跟随它们',d:'无事',fn:function(){}},
+      {t:'喂食',d:'-50 金 +10 完整',fn:function(){S.money-=50;S.hp=cl(S.hp+10,0,S.maxHp);save()}},
+      {t:'捕杀',d:'+300 金 +5 疯狂',fn:function(){S.money+=300;addMad(5)}}]},
+    {title:'漂浮的渔网',text:'一张大网漂浮在水面上。',opts:[
+      {t:'拉上来',d:'+1 随机卡',fn:function(){giveCard(0)}},
+      {t:'割开',d:'无事',fn:function(){}},
+      {t:'检查',d:'+1 诅咒 +1 史诗',fn:function(){addCurse();giveCard(2)}}]},
+    {title:'风暴预警',text:'乌云压顶，风暴将至。',opts:[
+      {t:'躲进港湾',d:'+15 完整',fn:function(){S.hp=cl(S.hp+15,0,S.maxHp);save()}},
+      {t:'继续航行',d:'+400 金 +5 疯狂',fn:function(){S.money+=400;addMad(5)}},
+      {t:'折返',d:'无事',fn:function(){}}]},
+    {title:'海底的歌声',text:'海底传来悠扬的歌声。',opts:[
+      {t:'倾听',d:'+8 疯狂 +1 稀有',fn:function(){addMad(8);giveCard(1)}},
+      {t:'闭耳',d:'无事',fn:function(){}},
+      {t:'跟着唱',d:'+15 疯狂 +1 史诗',fn:function(){addMad(15);giveCard(2)}}]},
+    {title:'沉船残骸',text:'一艘沉船半埋在沙里。',opts:[
+      {t:'潜水探索',d:'50% +500 金 / 50% -20 完整',fn:function(){if(chance(.5)){S.money+=500;save()}else{S.hp=Math.max(1,S.hp-20);save()}}},
+      {t:'用网捞',d:'+2 道具',fn:function(){S.bag.push(pickBagItem());S.bag.push(pickBagItem());save()}},
+      {t:'离开',d:'无事',fn:function(){}}]}
+  ],
+  [
+    {title:'死寂的海域',text:'整片海面死气沉沉。',opts:[
+      {t:'加速通过',d:'-10 完整',fn:function(){S.hp=Math.max(1,S.hp-10);save()}},
+      {t:'停船观察',d:'+5 疯狂 +1 稀有',fn:function(){addMad(5);giveCard(1)}},
+      {t:'在此下钩',d:'遭遇精英战',fn:function(){startBattle(true,true)}}]},
+    {title:'幽灵船',text:'一艘幽灵船缓缓漂来。',opts:[
+      {t:'登船',d:'50% +传说 / 50% -30 完整',fn:function(){if(chance(.5))giveCard(3);else{S.hp=Math.max(1,S.hp-30);save()}}},
+      {t:'致敬',d:'+1 稀有 +3 疯狂',fn:function(){giveCard(1);addMad(3)}},
+      {t:'绕开',d:'无事',fn:function(){}}]},
+    {title:'海市蜃楼',text:'远处浮现一座虚幻的城市。',opts:[
+      {t:'驶入',d:'遭遇镜像 Boss',fn:function(){startBattle(true,true)}},
+      {t:'停船观望',d:'+20 完整',fn:function(){S.hp=cl(S.hp+20,0,S.maxHp);save()}},
+      {t:'记录',d:'+1 史诗',fn:function(){giveCard(2)}}]},
+    {title:'渔获丰收',text:'一大群鱼从船底游过。',opts:[
+      {t:'全收',d:'+600 金 +5 疯狂',fn:function(){S.money+=600;addMad(5)}},
+      {t:'收一半',d:'+300 金',fn:function(){S.money+=300;save()}},
+      {t:'放生',d:'+20 完整',fn:function(){S.hp=cl(S.hp+20,0,S.maxHp);save()}}]},
+    {title:'深海之眼',text:'一只巨眼从深处升起。',opts:[
+      {t:'对视',d:'+10 疯狂 +1 史诗',fn:function(){addMad(10);giveCard(2)}},
+      {t:'避开',d:'无事',fn:function(){}},
+      {t:'攻击它',d:'-15 完整 +1 传说',fn:function(){S.hp=Math.max(1,S.hp-15);giveCard(3);save()}}]},
+    {title:'失落的船队',text:'一支船队漂在远处。',opts:[
+      {t:'跟随他们',d:'遭遇精英',fn:function(){startBattle(true,true)}},
+      {t:'打捞',d:'+1 道具',fn:function(){S.bag.push(pickBagItem());save()}},
+      {t:'离开',d:'无事',fn:function(){}}]}
+  ],
+  [
+    {title:'活着的暗礁',text:'一片暗礁在缓缓呼吸。',opts:[
+      {t:'绕行',d:'无事',fn:function(){}},
+      {t:'敲击',d:'+3 疯狂 +1 诅咒',fn:function(){addMad(3);addCurse()}},
+      {t:'触摸',d:'+1 史诗；完整<50 则 -20',fn:function(){giveCard(2);if(S.hp<50){S.hp=Math.max(1,S.hp-20);save()}}}]},
+    {title:'深海人鱼',text:'一条人鱼浮出水面看着你。',opts:[
+      {t:'交易',d:'-500 金 +1 传说',fn:function(){if(S.money>=500){S.money-=500;giveCard(3)}}},
+      {t:'拒绝',d:'+5 疯狂',fn:function(){addMad(5)}},
+      {t:'攻击',d:'-25 完整 +1 诅咒',fn:function(){S.hp=Math.max(1,S.hp-25);addCurse();save()}}]},
+    {title:'漆黑的窟窿',text:'一个深不见底的窟窿。',opts:[
+      {t:'潜入',d:'50% +1500 金 / 50% 死亡',fn:function(){if(chance(.5)){S.money+=1500;save()}else{S.hp=0;save();gameOver('葬身深渊','你潜入深洞，再也没有浮上来。')}}},
+      {t:'投石',d:'+1 稀有',fn:function(){giveCard(1)}},
+      {t:'离开',d:'无事',fn:function(){}}]},
+    {title:'同类的影子',text:'一个和你相似的人影站在远处。',opts:[
+      {t:'对话',d:'+1 角色专属卡',fn:function(){giveRoleCard()}},
+      {t:'战斗',d:'遭遇精英',fn:function(){startBattle(true,true)}},
+      {t:'逃跑',d:'-1 行动点',fn:function(){S.actionPoints--;save()}}]},
+    {title:'沉睡的巨物',text:'海底有什么东西在沉睡。',opts:[
+      {t:'唤醒',d:'遭遇 Boss',fn:function(){startBattle(true,true)}},
+      {t:'悄悄离开',d:'无事',fn:function(){}},
+      {t:'观察',d:'+1 稀有 +2 疯狂',fn:function(){giveCard(1);addMad(2)}}]}
+  ],
+  [
+    {title:'时间的裂缝',text:'一道紫色的裂缝浮在眼前。',opts:[
+      {t:'跳入',d:'+3 行动点',fn:function(){S.actionPoints+=3;save()}},
+      {t:'观察',d:'+20 疯狂 +1 传说',fn:function(){addMad(20);giveCard(3)}},
+      {t:'修补它',d:'-50 完整',fn:function(){S.hp=Math.max(1,S.hp-50);save()}}]},
+    {title:'深渊合唱',text:'无数声音从深处传来，形成合唱。',opts:[
+      {t:'加入',d:'+25 疯狂 +1 传说',fn:function(){addMad(25);giveCard(3)}},
+      {t:'闭耳',d:'-15 完整',fn:function(){S.hp=Math.max(1,S.hp-15);save()}},
+      {t:'反驳',d:'遭遇 Boss',fn:function(){startBattle(true,true)}}]},
+    {title:'你的尸体',text:'一个和你一模一样的人漂在水面。',opts:[
+      {t:'对视',d:'+30 完整 +5 疯狂',fn:function(){S.hp=cl(S.hp+30,0,S.maxHp);addMad(5);save()}},
+      {t:'搜身',d:'+2000 金 +10 疯狂',fn:function(){S.money+=2000;addMad(10)}},
+      {t:'埋葬',d:'+1 史诗',fn:function(){giveCard(2)}}]},
+    {title:'虚无之门',text:'一扇不存在的门悬在面前。',opts:[
+      {t:'走进去',d:'立刻还清债务',fn:function(){S.money=S.debt;save()}},
+      {t:'拒绝',d:'+30 疯狂',fn:function(){addMad(30)}},
+      {t:'观望',d:'+1 诅咒 +1 传说',fn:function(){addCurse();giveCard(3)}}]},
+    {title:'第一因',text:'你在这里看见了最初的那个东西。',opts:[
+      {t:'询问',d:'获得传说卡',fn:function(){giveCard(3)}},
+      {t:'沉默',d:'+5 疯狂',fn:function(){addMad(5)}},
+      {t:'攻击',d:'遭遇 Boss',fn:function(){startBattle(true,true)}}]}
+  ]
+];
+
+/* =========================================================
+   卡牌辅助
+   ========================================================= */
+function getCardPool(rarity){
+  var pool=[];
+  for(var k in CARDS){
+    var c=CARDS[k];
+    if(c.rarity===rarity&&!c.role)pool.push(k);
+  }
+  return pool;
+}
+function rollCard(minRarity){
+  var rarities=[0,0,0,0,0,0,1,1,1,1,2,3];
+  var r=rarities[ri(0,rarities.length-1)];
+  if(minRarity!==undefined&&r<minRarity)r=minRarity;
+  var pool=getCardPool(r);
+  if(pool.length===0)pool=getCardPool(0);
+  return pick(pool);
+}
+function addCardToDeck(key){if(key&&CARDS[key])S.deck.push(key)}
+function giveCard(minRarity){var key=rollCard(minRarity);addCardToDeck(key);return key}
+function giveRoleCard(){
+  var pool=[];
+  for(var k in CARDS){var c=CARDS[k];if(c.role===S.charId)pool.push(k)}
+  if(pool.length===0)return giveCard(1);
+  var key=pick(pool);addCardToDeck(key);return key;
+}
+function rollUniqueCards(n,minRarity){
+  var result=[],tries=0;
+  while(result.length<n&&tries<n*25){
+    var k=rollCard(minRarity);
+    if(result.indexOf(k)<0)result.push(k);
+    tries++;
+  }
+  return result;
+}
+function pickBagItem(){
+  var items=[
+    {name:'海底陈酒',desc:'降疯 30',fn:function(){addMad(-30)}},
+    {name:'幸运硬币',desc:'+50 金',fn:function(){S.money+=50}},
+    {name:'旧渔夫日记',desc:'+1 稀有卡',fn:function(){giveCard(1)}},
+    {name:'海图残页',desc:'+3 行动点',fn:function(){S.actionPoints+=3;save()}},
+    {name:'珊瑚护符',desc:'恢复 20 完整度',fn:function(){S.hp=cl(S.hp+20,0,S.maxHp);save()}}
+  ];
+  return pick(items);
+}
+
+/* =========================================================
+   全局状态
+   ========================================================= */
+var S={};
+var BATTLE=null;
+var bus=false;
+
+function initState(){
+  S={
+    period:1,actionPoints:21,maxAP:21,
+    money:0,debt:300,hp:100,maxHp:100,madness:0,
+    deck:[],cargo:[],bag:[],curseCount:0,
+    map:null,currentLayer:0,currentNode:0,
+    charId:null,boat:0,durability:100,
+    gameOver:false
+  };
+}
+function initDeck(){
+  var base=['pao','pao','pao','ti','ti','ti','liu','liu','wen'];
+  if(S.charId==='abuser')base.push('quan');
+  else if(S.charId==='holder')base.push('tie');
+  else if(S.charId==='madman')base.push('feng');
+  S.deck=base.slice();
+}
+
+/* =========================================================
+   地图生成 —— 反向树状
+   ========================================================= */
+function getLayersForPeriod(p){
+  if(p<=1) return 9;
+  if(p===2) return 10;
+  if(p===3) return 11;
+  return 12;
+}
+function getMidNodesPerLayer(p){
+  if(p<=2) return ri(2,3);
+  if(p<=4) return ri(3,4);
+  return ri(3,4);
+}
+function rollNodeType(areaIdx){
+  var w=[
+    [60,3,18,5,8,3,2,0,1,0,0],
+    [50,6,17,6,7,5,4,2,2,0,1],
+    [42,10,15,7,6,6,5,4,3,1,1],
+    [35,14,13,6,5,7,6,7,4,2,1],
+    [28,18,12,5,4,8,8,10,4,2,1]
+  ];
+  var types=['fight','elite','event','market','lighthouse','chest','fog','vortex','supply','hole','night'];
+  var arr=w[areaIdx];
+  var tot=0;for(var i=0;i<arr.length;i++)tot+=arr[i];
+  var r=Math.random()*tot;
+  for(var i=0;i<arr.length;i++){r-=arr[i];if(r<=0)return types[i]}
+  return 'fight';
+}
+function connectLayers(A,B){
+  var nA=A.length,nB=B.length;
+  for(var i=0;i<nA;i++)A[i].connections=[];
+  for(var j=0;j<nB;j++){
+    var pi=Math.floor(j*nA/nB);
+    if(pi>=nA)pi=nA-1;
+    if(A[pi].connections.indexOf(j)<0)A[pi].connections.push(j);
+  }
+  for(var i=0;i<nA;i++){
+    if(A[i].connections.length===0){
+      var ti=Math.min(Math.floor(i*nB/nA),nB-1);
+      A[i].connections.push(ti);
+    }
+  }
+  for(var i=0;i<nA;i++){
+    if(chance(0.55)){
+      var t=ri(0,nB-1);
+      if(A[i].connections.indexOf(t)<0)A[i].connections.push(t);
+    }
+  }
+  for(var i=0;i<nA;i++){
+    A[i].connections.sort(function(a,b){return a-b});
+    var uniq=[];
+    for(var k=0;k<A[i].connections.length;k++){
+      if(uniq.indexOf(A[i].connections[k])<0)uniq.push(A[i].connections[k]);
+    }
+    A[i].connections=uniq;
+  }
+}
+function generateMap(){
+  var totalLayers=getLayersForPeriod(S.period);
+  var layers=[];
+  for(var i=0;i<totalLayers;i++){
+    var isHarbor=(i===0);
+    var isBoss=(i===totalLayers-1);
+    var nodeCount=(isHarbor||isBoss)?1:getMidNodesPerLayer(S.period);
+    var areaIdx;
+    if(isHarbor)areaIdx=0;
+    else if(isBoss)areaIdx=4;
+    else{
+      var ratio=(i-1)/Math.max(1,totalLayers-3);
+      areaIdx=cl(Math.floor(ratio*5),0,4);
+    }
+    var nodes=[];
+    for(var j=0;j<nodeCount;j++){
+      var t;
+      if(isHarbor)t='harbor';
+      else if(isBoss)t='boss';
+      else t=rollNodeType(areaIdx);
+      nodes.push({id:j,type:t,visited:false,connections:[]});
+    }
+    layers.push({areaIdx:areaIdx,nodes:nodes});
+  }
+  for(var i=0;i<totalLayers-1;i++)connectLayers(layers[i].nodes,layers[i+1].nodes);
+  S.map={layers:layers,currentLayer:0,currentNode:0,_scrolled:false};
+  layers[0].nodes[0].visited=true;
+}
+
+/* =========================================================
+   渲染
+   ========================================================= */
+function renderHUD(){
+  $('hAP').textContent=S.actionPoints+'/'+S.maxAP;
+  $('hMoney').textContent=S.money;
+  $('hDebt').textContent=S.debt;
+  $('hHP').textContent=S.hp+'/'+S.maxHp;
+  $('hMad').textContent=Math.round(S.madness);
+  $('hPeriod').textContent=S.period;
+}
+function updateMadVisual(){
+  var m=cl(S.madness,0,100);
+  var a=cl((m-15)/85,0,1);
+  $('mad1').style.opacity=a*0.85;
+  $('mad2').style.opacity=a*0.55;
+  $('mad3').style.opacity=a*0.5;
+}
+
+function renderMap(){
+  var mapArea=$('mapArea');
+  var mapInner=$('mapInner');
+  var layersEl=$('layers');
+  var svgEl=$('mapSvg');
+  layersEl.innerHTML='';
+  svgEl.innerHTML='';
+  if(!S.map)return;
+
+  var layers=S.map.layers;
+  var N=layers.length;
+
+  var availW=(mapArea.clientWidth||600)-30;
+  var containerW=Math.min(1000,Math.max(340,availW));
+  var layerHeight=130;
+  var topMargin=60;
+  var bottomMargin=60;
+  var svgH=topMargin+(N-1)*layerHeight+bottomMargin;
+
+  mapInner.style.position='relative';
+  mapInner.style.width=containerW+'px';
+  mapInner.style.height=svgH+'px';
+  mapInner.style.margin='0 auto';
+
+  svgEl.setAttribute('viewBox','0 0 '+containerW+' '+svgH);
+  svgEl.setAttribute('preserveAspectRatio','none');
+  svgEl.style.width=containerW+'px';
+  svgEl.style.height=svgH+'px';
+
+  layersEl.style.width=containerW+'px';
+  layersEl.style.height=svgH+'px';
+
+  var nodeSize=mapArea.clientWidth<780?48:60;
+  var sideMargin=70;
+  var usableW=containerW-sideMargin*2;
+
+  function posOf(i,j){
+    var n=layers[i].nodes.length;
+    var y=topMargin+(N-1-i)*layerHeight;
+    var x;
+    if(n===1)x=containerW/2;
+    else x=sideMargin+(j+0.5)*usableW/n;
+    return {x:x,y:y};
+  }
+
+  // 绘制连接线
+  for(var i=0;i<N-1;i++){
+    var row=layers[i].nodes;
+    for(var j=0;j<row.length;j++){
+      var conns=row[j].connections;
+      for(var k=0;k<conns.length;k++){
+        var target=conns[k];
+        if(!layers[i+1].nodes[target])continue;
+        var p1=posOf(i,j);
+        var p2=posOf(i+1,target);
+        var line=document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1',p1.x);line.setAttribute('y1',p1.y);
+        line.setAttribute('x2',p2.x);line.setAttribute('y2',p2.y);
+        var bothVisited=row[j].visited&&layers[i+1].nodes[target].visited;
+        var isActive=(i===S.map.currentLayer&&j===S.map.currentNode&&!layers[i+1].nodes[target].visited);
+        if(isActive){
+          line.setAttribute('stroke','#e8b860');
+          line.setAttribute('stroke-width','3.5');
+          line.setAttribute('stroke-dasharray','10 5');
+        } else if(bothVisited){
+          line.setAttribute('stroke','#4a8a6a');
+          line.setAttribute('stroke-width','3');
+        } else {
+          line.setAttribute('stroke','#26394e');
+          line.setAttribute('stroke-width','1.5');
+          line.setAttribute('stroke-dasharray','5 7');
+          line.setAttribute('opacity','0.7');
+        }
+        svgEl.appendChild(line);
+      }
+    }
+  }
+
+  // 绘制层标题 + 节点（从上往下）
+  for(var i=N-1;i>=0;i--){
+    var layer=layers[i];
+    var isHarbor=(i===0);
+    var isBoss=(i===N-1);
+    var pos0=posOf(i,0);
+
+    var tag=document.createElement('div');
+    tag.className='layer-tag';
+    if(i===S.map.currentLayer)tag.classList.add('current');
+    var tagText;
+    if(isHarbor)tagText='⚓ 出发港';
+    else if(isBoss)tagText='👑 深海之主';
+    else tagText='第 '+i+' 段 · '+AREAS[layer.areaIdx].name;
+    tag.textContent=tagText;
+    tag.style.left='8px';
+    tag.style.top=(pos0.y-32)+'px';
+    layersEl.appendChild(tag);
+
+    for(var j=0;j<layer.nodes.length;j++){
+      var node=layer.nodes[j];
+      var pos=posOf(i,j);
+      var el=document.createElement('div');
+      el.className='node';
+      var sz=nodeSize;
+      if(node.type==='boss')sz=nodeSize+10;
+      el.style.width=sz+'px';
+      el.style.height=sz+'px';
+      el.style.left=(pos.x-sz/2)+'px';
+      el.style.top=(pos.y-sz/2)+'px';
+
+      var icon='⚔️',lbl='战斗';
+      switch(node.type){
+        case 'harbor':icon='⚓';lbl='港口';el.classList.add('harbor');break;
+        case 'boss':icon='👑';lbl='Boss';el.classList.add('boss');break;
+        case 'fight':icon='⚔️';lbl='战斗';break;
+        case 'elite':icon='💀';lbl='精英';el.classList.add('elite');break;
+        case 'event':icon='❓';lbl='事件';break;
+        case 'market':icon='🏪';lbl='渔市';el.classList.add('market');break;
+        case 'lighthouse':icon='🏮';lbl='灯塔';el.classList.add('lighthouse');break;
+        case 'chest':icon='💰';lbl='宝箱';break;
+        case 'fog':icon='🌫️';lbl='迷雾';el.classList.add('fog');break;
+        case 'vortex':icon='🌀';lbl='漩涡';el.classList.add('vortex');break;
+        case 'supply':icon='⚓';lbl='补给';break;
+        case 'hole':icon='🕳️';lbl='深洞';el.classList.add('hole');break;
+        case 'night':icon='🌙';lbl='夜钓';el.classList.add('night');break;
+      }
+      el.innerHTML='<div class="ico">'+icon+'</div><div class="lbl">'+lbl+'</div>';
+
+      var isCurrent=(i===S.map.currentLayer&&j===S.map.currentNode);
+      var isReach=canReach(i,j);
+      if(node.visited)el.classList.add('visited');
+      if(isCurrent)el.classList.add('current');
+      if(isReach)el.classList.add('reachable');
+      if(!isReach&&!node.visited&&!isCurrent)el.classList.add('locked');
+
+      if(isReach){
+        el.onclick=(function(li,ni){return function(){enterNode(li,ni)}})(i,j);
+      }
+      layersEl.appendChild(el);
+    }
+  }
+
+  // 首次渲染滚动到底部（港口）
+  if(!S.map._scrolled){
+    S.map._scrolled=true;
+    setTimeout(function(){
+      mapArea.scrollTop=mapArea.scrollHeight;
+    },30);
+  }
+}
+
+function canReach(layerIdx,nodeIdx){
+  if(bus||S.gameOver)return false;
+  if(!S.map)return false;
+  var layer=S.map.layers[layerIdx];
+  if(!layer)return false;
+  if(layer.nodes[nodeIdx].visited)return false;
+  if(layerIdx===0)return false;
+  if(layerIdx!==S.map.currentLayer+1)return false;
+  var prev=S.map.layers[S.map.currentLayer].nodes[S.map.currentNode];
+  if(!prev)return false;
+  return prev.connections.indexOf(nodeIdx)>=0;
+}
+
+/* =========================================================
+   进入节点 —— ★ 核心修复：进入后立即 renderMap，让后续节点亮起
+   ========================================================= */
+function enterNode(li,ni){
+  if(!canReach(li,ni))return;
+  if(S.actionPoints<=0){forceSettle();return}
+  S.actionPoints--;
+  S.map.currentLayer=li;
+  S.map.currentNode=ni;
+  var node=S.map.layers[li].nodes[ni];
+  node.visited=true;
+  renderHUD();
+  renderMap();          // ★ 关键：立刻刷新，让节点变✓、下一层节点亮起
+
+  if(node.type==='boss'){startBattle(true,true);return}
+
+  var areaIdx=S.map.layers[li].areaIdx;
+  switch(node.type){
+    case 'fight':startBattle(false,false);break;
+    case 'elite':startBattle(true,false);break;
+    case 'event':openEvent(areaIdx);break;
+    case 'market':openMarket();break;
+    case 'lighthouse':openLighthouse();break;
+    case 'chest':openChest();break;
+    case 'fog':openFog(li,ni);break;
+    case 'vortex':openVortex();break;
+    case 'supply':openSupply();break;
+    case 'hole':openHole();break;
+    case 'night':openNight();break;
+  }
+
+  if(S.actionPoints<=0&&!bus&&!BATTLE&&!S.gameOver){
+    setTimeout(function(){
+      if(!bus&&!BATTLE&&S.actionPoints<=0&&!S.gameOver)forceSettle();
+    },800);
+  }
+}
+
+/* =========================================================
+   战斗系统
+   ========================================================= */
+var BOSS_LIST=[
+  {name:'潮汐之主',icon:'👑',hp:60,special:'heal'},
+  {name:'渔夫之影',icon:'👥',hp:100,special:'copy'},
+  {name:'船骸幽灵',icon:'👻',hp:140,special:'punish'},
+  {name:'盲眼巨鲸',icon:'🐋',hp:180,special:'pierce'},
+  {name:'不可名状者',icon:'🌑',hp:250,special:'random'}
+];
+
+function startBattle(isElite,isBoss){
+  if(S.gameOver)return;
+  if(!S.deck||S.deck.length===0){
+    if(!S.charId)S.charId='abuser';
+    initDeck();
+  }
+  bus=false;
+
+  BATTLE={
+    round:1,
+    fish:null,fishMaxHp:0,fishHp:0,
+    fishStatuses:{poison:0,weak:0},
+    playerStatuses:{block:0,charge:0,damageBonus:0,firstHitReduce:0,globalBonus:0,regen:0},
+    hand:[],draw:[],discard:[],
+    costMods:{},
+    ap:3,maxAp:3,
+    isBoss:isBoss,isElite:isElite,
+    used:0,
+    currentIntent:null,
+    skipIntent:false,skipFishTurn:0,
+    attackThisTurn:0,lastPlayed:null,
+    noAttack:false,apPenalty:false,nextApBonus:0,
+    cardsPlayedThisTurn:[],
+    gamblerCardsPlayed:0,
+    turnDamageMul:1,
+    uniqueChanceUsed:false,
+    escapeHookUsed:false
+  };
+
+  var areaIdx=S.map.layers[S.map.currentLayer].areaIdx;
+  var fishPool=FISHES[areaIdx];
+  if(isBoss){
+    var bossIdx=Math.min(S.map.currentLayer,BOSS_LIST.length-1);
+    var boss=BOSS_LIST[bossIdx];
+    BATTLE.fish={name:boss.name,icon:boss.icon,hp:boss.hp,actions:[],isBoss:true,special:boss.special};
+  }else{
+    var base=pick(fishPool);
+    var hp=base.hp*(isElite?1.5:1);
+    BATTLE.fish={name:base.name+(isElite?' [精英]':''),icon:base.icon,hp:Math.round(hp),actions:base.actions.slice()};
+  }
+  BATTLE.fishMaxHp=BATTLE.fish.hp;
+  BATTLE.fishHp=BATTLE.fish.hp;
+  BATTLE.draw=S.deck.slice();
+  shuffle(BATTLE.draw);
+  drawCards(5,true);
+  pickIntent();
+
+  $('bArea').textContent=AREAS[areaIdx].name;
+  $('bFishName').textContent=BATTLE.fish.name;
+  $('bFishAv').textContent=BATTLE.fish.icon;
+  $('bFishAv').style.color='#8ec8e8';
+  $('bPlayerHpTxt').textContent=S.hp+' / '+S.maxHp;
+  $('bFishHpTxt').textContent=BATTLE.fishHp+' / '+BATTLE.fishMaxHp;
+  $('bFishHpBar').style.width='100%';
+  $('bPlayerHpBar').style.width=(S.hp/S.maxHp*100)+'%';
+  $('bRound').textContent='1';
+  $('btnRetreat').style.display=isBoss?'block':'none';
+  renderHand();
+  renderIntent();
+  renderStatuses();
+  renderAP();
+  $('game').classList.add('hidden');
+  $('battle').classList.remove('hidden');
+}
+
+function shuffle(arr){
+  for(var i=arr.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1));
+    var t=arr[i];arr[i]=arr[j];arr[j]=t;
+  }
+}
+function drawCards(n,silent){
+  if(!BATTLE)return 0;
+  var before=BATTLE.hand.length;
+  for(var i=0;i<n;i++){
+    if(BATTLE.draw.length===0){
+      if(BATTLE.discard.length===0)break;
+      BATTLE.draw=BATTLE.discard.slice();
+      BATTLE.discard=[];
+      shuffle(BATTLE.draw);
+    }
+    BATTLE.hand.push(BATTLE.draw.pop());
+  }
+  var drawn=BATTLE.hand.length-before;
+  if(drawn>0&&!silent){
+    showDrawFx(drawn);
+    flashScreen('draw');
+  }
+  return drawn;
+}
+
+function cardCost(key){
+  var c=CARDS[key];
+  if(!c)return 99;
+  if(BATTLE&&BATTLE.costMods&&BATTLE.costMods[key]!==undefined)return Math.max(0,BATTLE.costMods[key]);
+  return c.cost;
+}
+
+function renderHand(){
+  var el=$('hand');
+  el.innerHTML='';
+  if(!BATTLE)return;
+  for(var i=0;i<BATTLE.hand.length;i++){
+    (function(idx){
+      var key=BATTLE.hand[idx];
+      var c=CARDS[key];
+      if(!c)return;
+      var cost=cardCost(key);
+      var card=document.createElement('div');
+      card.className='card '+c.type;
+      if(c.rarity===1)card.classList.add('r1');
+      else if(c.rarity===2)card.classList.add('r2');
+      else if(c.rarity===3)card.classList.add('r3');
+      var cant=false;
+      if(cost>BATTLE.ap)cant=true;
+      if(BATTLE.noAttack&&c.type==='attack')cant=true;
+      if(BATTLE.uniqueChanceUsed&&c.type==='attack'&&key!=='quancun')cant=true;
+      if(cant)card.classList.add('cant');
+      card.innerHTML=
+        '<div class="cost">'+cost+'</div>'+
+        '<div class="cname">'+c.name+'</div>'+
+        '<div class="ctext">'+c.text+'</div>'+
+        '<div class="ctype">'+(c.type==='attack'?'攻击':c.type==='skill'?'技能':c.type==='power'?'能力':'诅咒')+'</div>';
+      card.onclick=function(){playCard(idx)};
+      el.appendChild(card);
+    })(i);
+  }
+}
+
+function renderAP(){
+  var el=$('apDots');
+  if(!el||!BATTLE)return;
+  el.innerHTML='';
+  for(var i=0;i<BATTLE.maxAp;i++){
+    var d=document.createElement('div');
+    d.className='ap-dot'+(i>=BATTLE.ap?' used':'');
+    el.appendChild(d);
+  }
+  $('btnEndTurn').disabled=false;
+}
+
+function renderIntent(){
+  if(!BATTLE)return;
+  var intent=BATTLE.currentIntent;
+  if(!intent){
+    $('bIntent').textContent='-';
+    $('bIntentBox').classList.remove('hidden-intent');
+    return;
+  }
+  var areaIdx=S.map.layers[S.map.currentLayer].areaIdx;
+  var hidden=areaIdx>=3&&!BATTLE.fish.exposed;
+  if(hidden){
+    $('bIntent').textContent='？？？';
+    $('bIntentBox').classList.add('hidden-intent');
+  }else{
+    var txt=intent.name;
+    if(intent.dmg)txt+='（'+intent.dmg+' 张力）';
+    if(intent.block)txt+='（+'+intent.block+' 格挡）';
+    if(intent.heal)txt+='（+'+intent.heal+' 体力）';
+    if(intent.mad)txt+='（+'+intent.mad+' 疯狂）';
+    $('bIntent').textContent=txt;
+    $('bIntentBox').classList.remove('hidden-intent');
+  }
+}
+
+function renderStatuses(){
+  if(!BATTLE)return;
+  var elF=$('bFishStatuses');elF.innerHTML='';
+  for(var k in BATTLE.fishStatuses){
+    var v=BATTLE.fishStatuses[k];
+    if(!v)continue;
+    var chip=document.createElement('div');
+    chip.className='status-chip '+k;
+    var names={poison:'中毒',weak:'虚弱'};
+    chip.textContent=(names[k]||k)+' '+v;
+    elF.appendChild(chip);
+  }
+  var elP=$('bPlayerStatuses');elP.innerHTML='';
+  var ps=BATTLE.playerStatuses;
+  if(ps.block){
+    var c=document.createElement('div');
+    c.className='status-chip';
+    c.style.color='#80c0e0';
+    c.style.borderColor='#2a5a7a';
+    c.style.background='rgba(30,60,90,.5)';
+    c.textContent='格挡 '+ps.block;
+    elP.appendChild(c);
+  }
+  if(ps.charge){
+    var c2=document.createElement('div');
+    c2.className='status-chip charge';
+    c2.textContent='蓄力 '+ps.charge;
+    elP.appendChild(c2);
+  }
+  if(BATTLE.turnDamageMul>1){
+    var c3=document.createElement('div');
+    c3.className='status-chip charge';
+    c3.textContent='背水 x'+BATTLE.turnDamageMul;
+    elP.appendChild(c3);
+  }
+}
+
+function pickIntent(){
+  var fish=BATTLE.fish;
+  if(fish.special){
+    if(fish.special==='heal')BATTLE.currentIntent={name:'潮汐恢复',heal:5};
+    else if(fish.special==='copy')BATTLE.currentIntent={name:'模仿',dmg:8};
+    else if(fish.special==='punish')BATTLE.currentIntent={name:'幽灵突袭',dmg:14};
+    else if(fish.special==='pierce')BATTLE.currentIntent={name:'深渊压迫',dmg:12,pierce:true};
+    else if(fish.special==='random')BATTLE.currentIntent=pick([
+      {name:'吞噬',discard:true},
+      {name:'凝视',mad:5},
+      {name:'撕裂',dmg:12},
+      {name:'召唤',dmg:8}
+    ]);
+    renderIntent();
+    return;
+  }
+  var act=pick(fish.actions);
+  BATTLE.currentIntent=act;
+  renderIntent();
+}
+
+/* =========================================================
+   出牌核心
+   ========================================================= */
+function playCard(idx){
+  if(!BATTLE)return;
+  if(bus)return;
+  if(idx<0||idx>=BATTLE.hand.length)return;
+  var key=BATTLE.hand[idx];
+  var c=CARDS[key];
+  if(!c)return;
+  var cost=cardCost(key);
+  if(cost>BATTLE.ap)return;
+  if(BATTLE.noAttack&&c.type==='attack')return;
+  if(BATTLE.uniqueChanceUsed&&c.type==='attack'&&key!=='quancun')return;
+
+  BATTLE.ap-=cost;
+  BATTLE.hand.splice(idx,1);
+  BATTLE.used++;
+  BATTLE.discard.push(key);
+
+  var dmgBonus=0;
+  if(BATTLE.playerStatuses.charge){dmgBonus=BATTLE.playerStatuses.charge;BATTLE.playerStatuses.charge=0}
+  var powerBonus=BATTLE.playerStatuses.damageBonus||0;
+
+  if(c.type==='attack'){
+    var dmg=0;
+    if(key==='pao')dmg=6;
+    else if(key==='ti'){dmg=4;drawCards(1);}
+    else if(key==='quan'){dmg=9;S.hp-=2;save()}
+    else if(key==='feng')dmg=ri(5,18);
+    else if(key==='du')dmg=ri(3,12);
+    else if(key==='wang')dmg=5;
+    else if(key==='liang')dmg=5;
+    else if(key==='shipao'){dmg=2;drawCards(1);}
+    else if(key==='tieb')dmg=S.map.layers[S.map.currentLayer].areaIdx>=3?12:7;
+    else if(key==='chaow')dmg=BATTLE.fishHp<BATTLE.fishMaxHp*0.3?15:5;
+    else if(key==='shun')dmg=6;
+    else if(key==='huo'){dmg=4;BATTLE.skipIntent=true}
+    else if(key==='zhaiZ')dmg=8;
+    else if(key==='xian'){dmg=20;S.hp-=15;save()}
+    else if(key==='huanX')dmg=S.madness>=30?15:6;
+    else if(key==='po'){dmg=10;drawCards(1);addMad(3)}
+    else if(key==='shen')dmg=12;
+    else if(key==='leiwa')dmg=14;
+    else if(key==='dali')dmg=18;
+    else if(key==='manyao'){dmg=3;BATTLE.fishStatuses.weak=(BATTLE.fishStatuses.weak||0)+2;drawCards(1)}
+    else if(key==='chou')dmg=5*3;
+    else if(key==='shenY')dmg=S.map.layers[S.map.currentLayer].areaIdx>=3?15:5;
+    else if(key==='xianZ'){dmg=30;S.hp-=25;save()}
+    else if(key==='ni'){dmg=8;addMad(8);drawCards(2)}
+    else if(key==='yiwang')dmg=30;
+    else if(key==='dubo')dmg=45;
+    else if(key==='minuo')dmg=4*4;
+    else if(key==='qie'){dmg=22;S.hp-=12;save()}
+    else if(key==='baohu')dmg=BATTLE.used>=15?40:25;
+    else if(key==='manyD'){dmg=3*4;BATTLE.fishStatuses.weak=(BATTLE.fishStatuses.weak||0)+4}
+    else if(key==='quancun'){dmg=45;BATTLE.uniqueChanceUsed=true}
+    else if(key==='shi10')dmg=(BATTLE.cardsPlayedThisTurn.length===0)?25*2:8*2;
+    else if(key==='ying')dmg=chance(.5)?15:0;
+    else if(key==='haod'){dmg=BATTLE.hand.length*8;BATTLE.discard=BATTLE.discard.concat(BATTLE.hand);BATTLE.hand=[]}
+    else if(key==='beishui'){dmg=8;if(S.hp<S.maxHp*0.3)BATTLE.turnDamageMul=2}
+    else if(key==='ming'){var r=ri(1,6);if(r<=2){S.hp-=15;save();dmg=0}else dmg=r<=4?15:30}
+    else if(key==='eluo'){
+      if(chance(1/6)){
+        BATTLE=null;bus=true;
+        setTimeout(function(){
+          $('battle').classList.add('hidden');
+          gameOver('轮盘空膛','咔哒一声。\n\n这一次，转轮停在了有子弹的那一格。');
+        },400);
+        return;
+      }else dmg=40;
+    }
+    else if(key==='quanya'){dmg=Math.floor(S.money/100);S.money=0;save()}
+    else if(key==='zuihou')dmg=(S.maxHp-S.hp);
+    else if(key==='san'){dmg=pick([5,20,50])}
+    else if(key==='siwang'){if(BATTLE.gamblerCardsPlayed>=3){dmg=60}else{S.hp-=25;save();dmg=0}}
+    else if(key==='linghun'){addMad(25);dmg=80}
+    else if(key==='zuihouY'){
+      var r3=ri(1,10);
+      if(r3===1){
+        BATTLE=null;bus=true;
+        setTimeout(function(){
+          $('battle').classList.add('hidden');
+          gameOver('终极一钓','骰子停在 1。\n\n线断了，鱼走了，你也跟着沉了。');
+        },400);
+        return;
+      }else if(r3===10)dmg=200;else dmg=r3*20;
+    }
+    else if(key==='baonu')dmg=7;
+    else if(key==='buken'){dmg=8;if(!BATTLE.escapeHookUsed){BATTLE.escapeHookUsed=true;BATTLE.skipFishTurn=1}}
+    else if(key==='baoli'){dmg=6*3;for(var i2=0;i2<3;i2++)addMad(1)}
+    else if(key==='buke'){var r4=ri(1,4);if(r4===1)dmg=40;else if(r4===2){S.hp=cl(S.hp+30,0,S.maxHp);save();dmg=0}else if(r4===3){BATTLE.hand=[];dmg=0}else{addMad(20);dmg=0}}
+    else dmg=5;
+    dmg+=dmgBonus+powerBonus;
+    dmg=Math.round(dmg*(BATTLE.turnDamageMul||1));
+    hitFish(dmg);
+
+    if(key==='dubo'&&BATTLE&&BATTLE.fishHp>0){
+      BATTLE=null;bus=true;
+      setTimeout(function(){
+        $('battle').classList.add('hidden');
+        gameOver('赌命失败','你把一切压在这一竿上。\n\n鱼没有倒下。深渊收走了你的赌注。');
+      },400);
+      return;
+    }
+  }
+  else if(c.type==='skill'){
+    if(key==='liu')addBlock(5);
+    else if(key==='wen')addBlock(8);
+    else if(key==='tie')addBlock(12);
+    else if(key==='jie'){addBlock(6);addMad(2)}
+    else if(key==='jiao'){drawCards(2);S.hp-=3;save()}
+    else if(key==='jiu'){S.hp=cl(S.hp+4,0,S.maxHp);addMad(2);save();showHealFx(4)}
+    else if(key==='zhai'){BATTLE.playerStatuses.damageBonus+=2;addMad(1)}
+    else if(key==='qian'){BATTLE.fish.exposed=2}
+    else if(key==='chen'){addBlock(7);BATTLE.noAttack=true}
+    else if(key==='zhi'){drawCards(2);if(BATTLE.fishHp<BATTLE.fishMaxHp/2)drawCards(1)}
+    else if(key==='jiaoX'){BATTLE.playerStatuses.firstHitReduce=1}
+    else if(key==='dawo'){BATTLE.fishStatuses.poison=(BATTLE.fishStatuses.poison||0)+3;drawCards(1)}
+    else if(key==='guan'){BATTLE.fish.exposed=1;drawCards(1)}
+    else if(key==='zhaiG'){BATTLE.fishStatuses.weak=0;drawCards(1)}
+    else if(key==='huan'){var n=BATTLE.hand.length;BATTLE.discard=BATTLE.discard.concat(BATTLE.hand);BATTLE.hand=[];drawCards(n+1)}
+    else if(key==='leng'){drawCards(2);BATTLE.playerStatuses.damageBonus+=3}
+    else if(key==='dutu'){
+      if(BATTLE.hand.length>0){
+        var ridx=ri(0,BATTLE.hand.length-1);
+        var rkey=BATTLE.hand[ridx];
+        if(CARDS[rkey])BATTLE.costMods[rkey]=0;
+      }
+    }
+    else if(key==='qianZ'){S.hp=cl(S.hp+8,0,S.maxHp);BATTLE.apPenalty=true;save();showHealFx(8)}
+    else if(key==='jing'){BATTLE.fishStatuses.poison=(BATTLE.fishStatuses.poison||0)+6;drawCards(1)}
+    else if(key==='yong'){if(BATTLE.attackThisTurn===0)drawCards(2)}
+    else if(key==='you'){var p=BATTLE.fishStatuses.poison||0;hitFish(Math.min(p*2,15))}
+    else if(key==='shi'){BATTLE.skipFishTurn=1}
+    else if(key==='dawoX'){BATTLE.fishStatuses.poison=(BATTLE.fishStatuses.poison||0)+10}
+    else if(key==='ren'){S.hp-=10;drawCards(3);addMad(3);save()}
+    else if(key==='chaox'){hitFish(40);S.hp=cl(S.hp+20,0,S.maxHp);save();showHealFx(20)}
+    else if(key==='dagui'){addMad(10);drawCards(5)}
+    else if(key==='pochan'){var heal=Math.floor(S.money/200)*20;S.hp=cl(S.hp+heal,0,S.maxHp);S.money=0;save();if(heal>0)showHealFx(heal)}
+    else if(key==='sishou'){addBlock(10);BATTLE.noAttack=true}
+    else if(key==='cun'){addBlock(15);drawCards(1)}
+    else if(key==='guixi'){S.hp=cl(S.hp+12,0,S.maxHp);BATTLE.nextApBonus=1;save();showHealFx(12)}
+    else if(key==='xianshen'){S.hp-=15;drawCards(3);BATTLE.playerStatuses.damageBonus+=3;save()}
+    else if(key==='jingshen'){if(BATTLE.lastPlayed)BATTLE.hand.push(BATTLE.lastPlayed)}
+  }
+  else if(c.type==='power'){
+    if(key==='fengz'){BATTLE.playerStatuses.madBonus=1}
+    else if(key==='yuwang'){BATTLE.playerStatuses.globalBonus+=8}
+    else if(key==='shenX'){BATTLE.playerStatuses.curseBonus=1}
+    else if(key==='qianri'){BATTLE.playerStatuses.regen=4}
+    else if(key==='gongzhen'){BATTLE.playerStatuses.resonate=1}
+  }
+  else if(c.type==='curse'){
+    if(key==='shikong'){hitFish(5);S.hp-=5;save()}
+    else if(key==='huanjue'){if(chance(.5))drawCards(2);else{S.hp-=5;save()}}
+    else if(key==='shoudou'){drawCards(1)}
+    else if(key==='niY'){addMad(3)}
+    else if(key==='mao'){addBlock(5);if(BATTLE.hand.length>0){BATTLE.discard.push(BATTLE.hand.pop())}}
+    else if(key==='kunhuo'){
+      if(BATTLE.hand.length>0){
+        var rk=pick(BATTLE.hand);
+        if(CARDS[rk])BATTLE.costMods[rk]=cardCost(rk)+2;
+      }
+    }
+    else if(key==='kongju'){}
+  }
+
+  BATTLE.cardsPlayedThisTurn.push(key);
+  BATTLE.attackThisTurn+=(c.type==='attack'?1:0);
+  if(c.gambler)BATTLE.gamblerCardsPlayed++;
+  if(c.type==='attack')BATTLE.lastPlayed=key;
+
+  if(S.hp<=0){finishBattle(false);return}
+  if(BATTLE&&BATTLE.fishHp<=0){finishBattle(true);return}
+
+  renderHand();
+  renderStatuses();
+  renderAP();
+}
+
+function addBlock(amount){
+  if(!BATTLE||amount<=0)return;
+  BATTLE.playerStatuses.block=(BATTLE.playerStatuses.block||0)+amount;
+  showShieldFx(amount);
+  flashScreen('shield');
+}
+
+function hitFish(dmg){
+  if(!BATTLE)return;
+  dmg=Math.round(dmg);
+  var gb=BATTLE.playerStatuses.globalBonus||0;
+  dmg+=gb;
+  BATTLE.fishHp-=dmg;
+  if(BATTLE.fishHp<0)BATTLE.fishHp=0;
+  $('bFishHpBar').style.width=(BATTLE.fishHp/BATTLE.fishMaxHp*100)+'%';
+  $('bFishHpTxt').textContent=BATTLE.fishHp+' / '+BATTLE.fishMaxHp;
+  var av=$('bFishAv');
+  av.classList.remove('hit');
+  void av.offsetWidth;
+  av.classList.add('hit');
+  showFx(dmg,'-','dmg',av);
+  showSlash(av);
+  flashScreen('attack');
+}
+
+function hitPlayerFx(dmg){
+  showFx(dmg,'-','dmg',null);
+  flashScreen('attack');
+  var b=$('battle');b.classList.remove('shake');void b.offsetWidth;b.classList.add('shake');
+}
+
+function endTurn(){
+  if(!BATTLE||bus)return;
+  BATTLE.discard=BATTLE.discard.concat(BATTLE.hand);
+  BATTLE.hand=[];
+  BATTLE.playerStatuses.block=0;
+  BATTLE.noAttack=false;
+  BATTLE.playerStatuses.damageBonus=0;
+  BATTLE.attackThisTurn=0;
+  BATTLE.turnDamageMul=1;
+  BATTLE.cardsPlayedThisTurn=[];
+  fishTurn();
+}
+
+function fishTurn(){
+  if(!BATTLE)return;
+  var poison=BATTLE.fishStatuses.poison||0;
+  if(poison>0){
+    hitFish(poison);
+    BATTLE.fishStatuses.poison=poison-1;
+    if(BATTLE.fishHp<=0){finishBattle(true);return}
+  }
+  if(BATTLE.fishStatuses.weak>0)BATTLE.fishStatuses.weak--;
+  if(BATTLE.fish.exposed>0)BATTLE.fish.exposed--;
+  if(BATTLE.skipFishTurn>0){BATTLE.skipFishTurn--;nextRound();return}
+  if(BATTLE.skipIntent){BATTLE.skipIntent=false;nextRound();return}
+  var intent=BATTLE.currentIntent;
+  if(!intent){nextRound();return}
+  if(intent.dmg){
+    var dmg=intent.dmg;
+    if(BATTLE.fishStatuses.weak>0)dmg-=BATTLE.fishStatuses.weak;
+    if(dmg<0)dmg=0;
+    if(!intent.pierce){
+      var block=BATTLE.playerStatuses.block||0;
+      if(block>=dmg){
+        BATTLE.playerStatuses.block=block-dmg;
+        showShieldFx(block,true);
+        dmg=0;
+      }else{
+        BATTLE.playerStatuses.block=0;
+        dmg-=block;
+      }
+    }
+    if(dmg>0){
+      if(BATTLE.playerStatuses.firstHitReduce>0){dmg=Math.round(dmg/2);BATTLE.playerStatuses.firstHitReduce--}
+      S.hp-=dmg;
+      if(S.hp<0)S.hp=0;
+      hitPlayerFx(dmg);
+      $('bPlayerHpTxt').textContent=S.hp+' / '+S.maxHp;
+      $('bPlayerHpBar').style.width=(S.hp/S.maxHp*100)+'%';
+      if(S.hp<=0){finishBattle(false);return}
+    }
+  }
+  if(intent.heal){
+    BATTLE.fishHp=Math.min(BATTLE.fishMaxHp,BATTLE.fishHp+intent.heal);
+    $('bFishHpBar').style.width=(BATTLE.fishHp/BATTLE.fishMaxHp*100)+'%';
+    $('bFishHpTxt').textContent=BATTLE.fishHp+' / '+BATTLE.fishMaxHp;
+    showFx(intent.heal,'+','heal',$('bFishAv'));
+  }
+  if(intent.mad)addMad(intent.mad);
+  if(intent.draw)drawCards(intent.draw);
+  if(intent.discard){if(BATTLE.hand.length>0){var idx=ri(0,BATTLE.hand.length-1);BATTLE.hand.splice(idx,1)}}
+  if(intent.slow){BATTLE.apPenalty=true}
+  nextRound();
+}
+
+function nextRound(){
+  if(!BATTLE)return;
+  BATTLE.round++;
+  if(BATTLE.round>12){finishBattle(false);return}
+  BATTLE.ap=BATTLE.maxAp;
+  if(BATTLE.apPenalty){BATTLE.ap--;BATTLE.apPenalty=false}
+  if(BATTLE.nextApBonus){BATTLE.ap+=BATTLE.nextApBonus;BATTLE.nextApBonus=0}
+  if(BATTLE.playerStatuses.regen){S.hp=cl(S.hp+BATTLE.playerStatuses.regen,0,S.maxHp);save();showHealFx(BATTLE.playerStatuses.regen)}
+  BATTLE.turnDamageMul=1;
+  BATTLE.cardsPlayedThisTurn=[];
+  drawCards(5);
+  pickIntent();
+  renderHand();
+  renderAP();
+  renderStatuses();
+  renderIntent();
+  $('bRound').textContent=BATTLE.round;
+  $('bPlayerHpTxt').textContent=S.hp+' / '+S.maxHp;
+  $('bPlayerHpBar').style.width=(S.hp/S.maxHp*100)+'%';
+}
+
+function addMad(n){
+  S.madness=cl(S.madness+n,0,100);
+  updateMadVisual();
+  renderHUD();
+  if(n>0)showFx(n,'+','mad',null);
+  if(S.madness>=100){
+    gameOver('彻 底 疯 狂','你的理智终于像渔线一样崩断了。\n\n深海在你耳边低语，你笑着走进了水里。');
+  }
+}
+function save(){renderHUD()}
+
+/* =========================================================
+   特效
+   ========================================================= */
+function showFx(val,sign,cls,anchor){
+  var fx=document.createElement('div');
+  fx.className='fx-text '+cls;
+  fx.textContent=sign+val;
+  if(anchor){
+    var r=anchor.getBoundingClientRect();
+    fx.style.left=(r.left+r.width/2-20)+'px';
+    fx.style.top=(r.top+20)+'px';
+  }else{
+    fx.style.left=(window.innerWidth/2+ri(-60,60))+'px';
+    fx.style.top=(window.innerHeight/2+ri(-40,40))+'px';
+  }
+  $('fxLayer').appendChild(fx);
+  setTimeout(function(){fx.remove()},1300);
+}
+function showHealFx(amount){
+  if(amount<=0)return;
+  var fx=document.createElement('div');
+  fx.className='fx-text heal';
+  fx.textContent='+'+amount+' HP';
+  fx.style.left=(window.innerWidth/2+ri(-80,80))+'px';
+  fx.style.top=(window.innerHeight*0.62+ri(-20,20))+'px';
+  $('fxLayer').appendChild(fx);
+  setTimeout(function(){fx.remove()},1300);
+}
+function showShieldFx(amount,silentText){
+  var fx=document.createElement('div');
+  fx.className='fx-text shield';
+  fx.textContent=(silentText?'挡住 ':'+'+amount+' 格挡');
+  fx.style.left=(window.innerWidth/2+ri(-70,70))+'px';
+  fx.style.top=(window.innerHeight*0.62+ri(-20,20))+'px';
+  $('fxLayer').appendChild(fx);
+  setTimeout(function(){fx.remove()},1300);
+}
+function showDrawFx(count){
+  var fx=document.createElement('div');
+  fx.className='fx-text draw';
+  fx.textContent='🎴 抽 '+count+' 张';
+  fx.style.left=(window.innerWidth/2+ri(-70,70))+'px';
+  fx.style.top=(window.innerHeight*0.78+ri(-15,15))+'px';
+  $('fxLayer').appendChild(fx);
+  setTimeout(function(){fx.remove()},1300);
+
+  for(var i=0;i<count;i++){
+    (function(){
+      var card=document.createElement('div');
+      card.className='draw-fly';
+      var rx=ri(0,window.innerWidth-40);
+      card.style.left=rx+'px';
+      card.style.top='-60px';
+      document.body.appendChild(card);
+      setTimeout(function(){card.remove()},700);
+    })();
+  }
+}
+function showSlash(anchor){
+  if(!anchor)return;
+  var r=anchor.getBoundingClientRect();
+  var slash=document.createElement('div');
+  slash.className='slash';
+  slash.style.left=(r.left+r.width/2-40)+'px';
+  slash.style.top=(r.top+r.height/2-40)+'px';
+  document.body.appendChild(slash);
+  setTimeout(function(){slash.remove()},500);
+}
+function flashScreen(type){
+  var el=document.createElement('div');
+  el.className='screen-flash '+type;
+  document.body.appendChild(el);
+  setTimeout(function(){el.remove()},400);
+}
+
+/* =========================================================
+   战斗结束
+   ========================================================= */
+function finishBattle(win){
+  if(!BATTLE)return;
+  var isBoss=BATTLE.isBoss;
+  var areaIdx=S.map.layers[S.map.currentLayer].areaIdx;
+  var fishName=BATTLE.fish.name.replace(' [精英]','');
+  var fishMaxHp=BATTLE.fishMaxHp;
+
+  if(!win&&S.hp<=0){
+    BATTLE=null;bus=true;
+    setTimeout(function(){
+      $('battle').classList.add('hidden');
+      $('game').classList.add('hidden');
+      gameOver('溺 毙','你的完整度归零。\n\n鱼竿从手中滑落，海水灌进口鼻。\n\n最后你听见的，是鱼线绷断的脆响。');
+    },400);
+    return;
+  }
+
+  BATTLE=null;
+  bus=true;
+  setTimeout(function(){
+    $('battle').classList.add('hidden');
+    $('game').classList.remove('hidden');
+
+    if(win){
+      if(!isBoss){
+        var sz=rollFishSize();
+        S.cargo.push({
+          name:fishName,size:sz.name,
+          w:sz.w,h:sz.h,weight:sz.w*sz.h,
+          value:Math.round(fishMaxHp*3*(1+areaIdx*0.5))
+        });
+      }
+      checkCurseInjection();
+      bus=false;
+      renderMap();
+      renderHUD();
+
+      if(isBoss){
+        openModal('⚔️ 深海之主已死',
+          '<p style="text-align:center;color:#e8c860;font-size:16px;margin-bottom:12px">「'+fishName+'」沉入了它自己的深渊。</p>'+
+          '<p style="text-align:center;color:#8fa8bd;font-size:12px">这片海域暂时恢复了平静。回港结算。</p>'+
+          '<button class="opt-btn" onclick="closeModal();forceSettle()" style="margin-top:14px"><span class="ot">回 港 结 算</span></button>');
+      }else{
+        var cardChoices=rollUniqueCards(3,0);
+        showCardPick(cardChoices);
+      }
+    }else{
+      addMad(10);
+      bus=false;
+      renderMap();
+      renderHUD();
+      openModal('💨 鱼跑了','<p style="text-align:center;color:#e28b8b">「'+fishName+'」挣脱了鱼钩。</p><p style="text-align:center;color:#8fa8bd;font-size:12px">疯狂 +10</p><button class="opt-btn" onclick="closeModal()" style="margin-top:14px"><span class="ot">继续</span></button>');
+    }
+
+    if(S.actionPoints<=0&&!S.gameOver){
+      setTimeout(function(){
+        if(!bus&&!BATTLE&&S.actionPoints<=0&&!S.gameOver)forceSettle();
+      },600);
+    }
+  },400);
+}
+
+function rollFishSize(){
+  var r=Math.random();
+  if(r<0.55)return{w:1,h:1,name:'普通'};
+  if(r<0.85)return{w:1,h:2,name:'大'};
+  if(r<0.97)return{w:2,h:2,name:'巨大'};
+  return{w:2,h:3,name:'传说尺寸'};
+}
+
+function checkCurseInjection(){
+  var should=Math.floor(S.madness/20);
+  while(S.curseCount<should){
+    var curses=['chenzhong','shikong','huanjue','shoudou','chenlun','niY','kong','mao','kunhuo','kongju'];
+    S.deck.push(pick(curses));
+    S.curseCount++;
+  }
+}
+
+function showCardPick(choices){
+  var html='<p style="text-align:center;color:#8fa8bd;font-size:13px;margin-bottom:14px">你在和鱼的博弈中学到了新东西</p>';
+  html+='<div class="card-pick">';
+  for(var i=0;i<choices.length;i++){
+    (function(idx,key){
+      var c=CARDS[key];
+      if(!c)return;
+      var rarityLabel=['普通','稀有','史诗','传说'][c.rarity]||'普通';
+      html+='<div class="pick-card '+c.type+' r'+c.rarity+'" onclick="pickCardReward(\''+key+'\')">'+
+        '<div class="cost">'+c.cost+'</div>'+
+        '<div class="rarity r'+c.rarity+'">'+rarityLabel+'</div>'+
+        '<div class="cname">'+c.name+'</div>'+
+        '<div style="flex:1;font-size:11px;line-height:1.4;color:#a8bccd;margin-top:6px;text-align:center">'+c.text+'</div>'+
+        '<div style="font-size:10px;color:#6a8098;text-align:center;border-top:1px dashed #2a4056;padding-top:4px">'+(c.type==='attack'?'攻击':c.type==='skill'?'技能':c.type==='power'?'能力':'诅咒')+'</div>'+
+        '</div>';
+    })(i,choices[i]);
+  }
+  html+='</div>';
+  html+='<div style="text-align:center;margin-top:14px"><button class="opt-btn" onclick="pickCardReward(null)" style="max-width:200px;margin:0 auto"><span class="ot">跳过</span></button></div>';
+  openModal('🎣 上钩！',html);
+}
+function pickCardReward(key){
+  if(key)addCardToDeck(key);
+  closeModal();
+  renderHUD();
+}
+
+/* =========================================================
+   节点事件
+   ========================================================= */
+function openEvent(areaIdx){
+  var ev=pick(EVENTS[areaIdx]);
+  var html='<p style="font-size:13.5px;line-height:1.7;color:#cfe0ee;margin-bottom:8px">'+ev.text+'</p>';
+  for(var i=0;i<ev.opts.length;i++){
+    (function(idx,opt){
+      html+='<button class="opt-btn" onclick="doEventChoice('+idx+')">'+
+        '<span class="ot">'+opt.t+'</span>'+
+        '<span class="od">'+opt.d+'</span></button>';
+    })(i,ev.opts[i]);
+  }
+  window.__currentEvent=ev;
+  openModal('❓ '+ev.title,html);
+}
+function doEventChoice(i){
+  var ev=window.__currentEvent;
+  if(!ev||!ev.opts[i])return;
+  closeModal();
+  ev.opts[i].fn();
+  renderHUD();
+  // ★ 核心：事件结束后刷新地图，让下一层可达节点亮起
+  if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$('game').classList.contains('hidden')){
+    renderMap();
+  }
+}
+
+function openLighthouse(){
+  var html='<p style="font-size:13px;color:#a8bccd;margin-bottom:10px">你停泊在一座孤零零的灯塔下。</p>'+
+    '<button class="opt-btn" onclick="lighthousePick(0)"><span class="ot">🛌 休息</span><span class="od">恢复 30 完整度</span></button>'+
+    '<button class="opt-btn" onclick="lighthousePick(1)"><span class="ot">🧘 打坐</span><span class="od">-20 疯狂</span></button>'+
+    '<button class="opt-btn" onclick="lighthousePick(3)"><span class="ot">💪 冥想</span><span class="od">最大完整度 +10</span></button>';
+  openModal('🏮 灯塔',html);
+}
+function lighthousePick(i){
+  if(i===0){S.hp=cl(S.hp+30,0,S.maxHp)}
+  else if(i===1){S.madness=Math.max(0,S.madness-20);updateMadVisual()}
+  else if(i===3){S.maxHp+=10;S.hp+=10}
+  save();
+  closeModal();
+  if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$('game').classList.contains('hidden'))renderMap();
+}
+
+function openMarket(){
+  var html='<p style="font-size:12px;color:#a8bccd;margin-bottom:10px">看看有什么需要的？</p>'+
+    '<button class="opt-btn" onclick="buyCard(0)"><span class="ot">买普通卡（100 金）</span><span class="od">随机 3 选 1</span></button>'+
+    '<button class="opt-btn" onclick="buyCard(1)"><span class="ot">买稀有卡（300 金）</span><span class="od">随机 3 选 1</span></button>'+
+    '<button class="opt-btn" onclick="buyCard(2)"><span class="ot">买史诗卡（800 金）</span><span class="od">随机 3 选 1</span></button>'+
+    '<button class="opt-btn" onclick="closeModal();if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$(\'game\').classList.contains(\'hidden\'))renderMap()"><span class="ot">离开</span></button>';
+  openModal('🏪 流动渔市',html);
+}
+function buyCard(r){
+  var price=[100,300,800][r];
+  if(S.money<price){openModal('❌ 金币不足','<p style="text-align:center;color:#e28b8b">你买不起。</p><button class="opt-btn" onclick="openMarket()"><span class="ot">返回</span></button>');return}
+  var choices=rollUniqueCards(3,r);
+  if(choices.length===0)return;
+  S.money-=price;
+  save();
+  closeModal();
+  showCardPick(choices);
+}
+
+function openChest(){
+  var r=Math.random();
+  var html='<p style="text-align:center;font-size:40px;margin-bottom:10px">🎁</p>';
+  if(r<0.4){
+    var g=ri(300,800);S.money+=g;
+    html+='<p style="text-align:center;color:#d9a441;font-size:16px">+'+g+' 金币</p>';
+  }else if(r<0.7){
+    S.bag.push(pickBagItem());
+    html+='<p style="text-align:center;color:#c9a8ff">获得 1 个道具</p>';
+  }else{
+    var k=giveCard(1);
+    html+='<p style="text-align:center;color:#e8c860">获得 1 张稀有卡：「'+CARDS[k].name+'」</p>';
+  }
+  html+='<button class="opt-btn" onclick="closeModal();if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$(\'game\').classList.contains(\'hidden\'))renderMap()"><span class="ot">确定</span></button>';
+  save();
+  openModal('💰 宝箱',html);
+}
+
+function openFog(li,ni){
+  var r=Math.random();
+  if(r<0.6)startBattle(false,false);
+  else if(r<0.75)startBattle(true,false);
+  else if(r<0.9)openEvent(S.map.layers[li].areaIdx);
+  else openChest();
+}
+
+function openVortex(){
+  var html='<p style="font-size:13px;color:#c9a8ff;margin-bottom:10px">你被卷入了一个漩涡。你的理智开始动摇，但你感觉到力量在涌动。</p>'+
+    '<button class="opt-btn" onclick="vortexAccept()"><span class="ot">接受</span><span class="od">+10 疯狂，获得 1 张史诗卡 + 1 张诅咒卡</span></button>'+
+    '<button class="opt-btn" onclick="vortexResist()"><span class="ot">抵抗</span><span class="od">-20 完整度</span></button>';
+  openModal('🌀 诡异漩涡',html);
+}
+function vortexAccept(){
+  addMad(10);addCurse();giveCard(2);
+  closeModal();
+  if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$('game').classList.contains('hidden'))renderMap();
+}
+function vortexResist(){
+  S.hp=Math.max(1,S.hp-20);save();
+  closeModal();
+  if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$('game').classList.contains('hidden'))renderMap();
+}
+
+function openSupply(){
+  var html='<p style="font-size:13px;color:#a8bccd;margin-bottom:10px">一艘补给船靠了过来。老水手递给你一桶淡水。</p>'+
+    '<button class="opt-btn" onclick="supplyAccept()"><span class="ot">接受</span><span class="od">+20 完整度 +2 行动点</span></button>'+
+    '<button class="opt-btn" onclick="supplyTrade()"><span class="ot">交换</span><span class="od">-300 金，获得 1 张稀有卡</span></button>';
+  openModal('⚓ 补给船',html);
+}
+function supplyAccept(){
+  S.hp=cl(S.hp+20,0,S.maxHp);S.actionPoints+=2;save();
+  closeModal();
+  if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$('game').classList.contains('hidden'))renderMap();
+}
+function supplyTrade(){
+  if(S.money<300)return;
+  S.money-=300;giveCard(1);save();
+  closeModal();
+  if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$('game').classList.contains('hidden'))renderMap();
+}
+
+function openHole(){
+  var html='<p style="font-size:13px;color:#a8bccd;margin-bottom:10px">你看到一个深不见底的洞穴。里面似乎有东西在发光。</p>'+
+    '<button class="opt-btn" onclick="holeDive()"><span class="ot">潜入</span><span class="od">30% 传说 / 40% 2000 金 / 30% 死亡</span></button>'+
+    '<button class="opt-btn" onclick="closeModal();if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$(\'game\').classList.contains(\'hidden\'))renderMap()"><span class="ot">离开</span></button>';
+  openModal('🕳️ 深洞',html);
+}
+function holeDive(){
+  closeModal();
+  var r=Math.random();
+  if(r<0.3){
+    giveCard(3);
+    if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$('game').classList.contains('hidden'))renderMap();
+  } else if(r<0.7){
+    S.money+=2000;save();
+    if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$('game').classList.contains('hidden'))renderMap();
+  } else {
+    S.hp=0;save();
+    gameOver('葬身深渊','你潜入深洞，再也没有浮上来。');
+  }
+}
+
+function openNight(){
+  var html='<p style="font-size:13px;color:#c0d8f0;margin-bottom:10px">月亮升起来了。海水变成了银色。</p>'+
+    '<button class="opt-btn" onclick="closeModal();startBattle(true,false)"><span class="ot">下钩</span><span class="od">遭遇精英战</span></button>'+
+    '<button class="opt-btn" onclick="closeModal();startBattle(true,true)"><span class="ot">等待</span><span class="od">遭遇传说战</span></button>'+
+    '<button class="opt-btn" onclick="closeModal();if(S.map&&!S.gameOver&&!BATTLE&&!bus&&!$(\'game\').classList.contains(\'hidden\'))renderMap()"><span class="ot">离开</span></button>';
+  openModal('🌙 夜钓点',html);
+}
+
+/* =========================================================
+   港口 & 结算
+   ========================================================= */
+function openHarbor(){
+  $('game').classList.add('hidden');
+  $('harbor').classList.remove('hidden');
+  $('hHarborAP').textContent=S.actionPoints;
+}
+function returnToSea(){
+  if(S.actionPoints<=0){forceSettle();return}
+  S.actionPoints--;
+  $('harbor').classList.add('hidden');
+  $('game').classList.remove('hidden');
+  renderHUD();
+  renderMap();
+  if(S.actionPoints<=0)forceSettle();
+}
+
+function openCargoModal(){
+  if(S.cargo.length===0){
+    openModal('📦 货舱','<div style="text-align:center;color:#5a6d80;padding:20px">货舱空空如也。</div>');
+    return;
+  }
+  var html='<div class="cargo-list">';
+  var total=0;
+  for(var i=0;i<S.cargo.length;i++){
+    var f=S.cargo[i];
+    total+=f.value;
+    html+='<div class="cargo-list-item"><span>'+f.name+' ['+f.size+'] '+f.weight+'格</span><span style="color:#d9a441">'+f.value+' 金</span></div>';
+  }
+  html+='</div>';
+  html+='<button class="opt-btn" onclick="sellAllCargo()"><span class="ot">💰 全部出售</span><span class="od">共 '+total+' 金币</span></button>';
+  openModal('📦 货舱',html);
+}
+function sellAllCargo(){
+  var total=0;
+  for(var i=0;i<S.cargo.length;i++)total+=S.cargo[i].value;
+  S.money+=total;
+  S.cargo=[];
+  save();
+  showFx(total,'+','gold',null);
+  closeModal();
+}
+
+function openBagModal(){
+  if(S.bag.length===0){
+    openModal('🎒 道具','<div style="text-align:center;color:#5a6d80;padding:20px">空空如也。</div>');
+    return;
+  }
+  var html='';
+  for(var i=0;i<S.bag.length;i++){
+    (function(idx){
+      var it=S.bag[idx];
+      html+='<button class="opt-btn" onclick="useBagItem('+idx+')"><span class="ot">'+it.name+'</span><span class="od">'+it.desc+'</span></button>';
+    })(i);
+  }
+  openModal('🎒 道具',html);
+}
+function useBagItem(i){
+  var it=S.bag[i];
+  if(!it)return;
+  it.fn();
+  S.bag.splice(i,1);
+  save();
+  closeModal();
+}
+
+function openTavern(){
+  var cost=80+S.period*40;
+  var html='<p style="font-size:13px;color:#a8bccd;margin-bottom:10px">酒馆里传来低沉的歌声。</p>'+
+    '<button class="opt-btn" onclick="drink('+cost+')"><span class="ot">🍺 喝酒（'+cost+' 金）</span><span class="od">疯狂 -14~22</span></button>'+
+    '<button class="opt-btn" onclick="closeModal()"><span class="ot">离开</span></button>';
+  openModal('🍺 酒馆',html);
+}
+function drink(c){
+  if(S.money<c)return;
+  S.money-=c;
+  S.madness=Math.max(0,S.madness-(14+ri(0,8)));
+  updateMadVisual();
+  save();
+  closeModal();
+}
+
+function openShop(){
+  var price=200*(S.boat+1);
+  var html='<p style="font-size:12px;color:#a8bccd;margin-bottom:10px">装备升级需要回港。</p>'+
+    '<button class="opt-btn" onclick="upgradeRod()"><span class="ot">🪝 升级钓竿</span><span class="od">当前等级 '+S.boat+'，价格 '+price+' 金</span></button>'+
+    '<button class="opt-btn" onclick="closeModal()"><span class="ot">离开</span></button>';
+  openModal('🛒 商店',html);
+}
+function upgradeRod(){
+  var price=200*(S.boat+1);
+  if(S.money<price)return;
+  S.money-=price;S.boat++;
+  save();closeModal();
+}
+
+function openNPCs(){
+  openModal('👥 人物','<div style="text-align:center;color:#7a8fa2;padding:14px;font-size:12px">NPC 系统暂未实现</div>');
+}
+function openRepair(){
+  var cost=Math.round((100-S.durability)*5);
+  var html='<button class="opt-btn" onclick="repairShip('+cost+')"><span class="ot">🔧 修理（'+cost+' 金）</span><span class="od">恢复至 100%</span></button>'+
+    '<button class="opt-btn" onclick="closeModal()"><span class="ot">离开</span></button>';
+  openModal('🔧 修船',html);
+}
+function repairShip(c){
+  if(S.money<c)return;
+  S.money-=c;S.durability=100;
+  save();closeModal();
+}
+
+function forceSettle(){
+  if(bus)return;
+  bus=true;
+  var total=0;
+  for(var i=0;i<S.cargo.length;i++)total+=S.cargo[i].value;
+  S.money+=total;
+  S.cargo=[];
+  save();
+  if(S.money>=S.debt){
+    S.money-=S.debt;
+    S.period++;
+    S.debt=Math.round(S.debt*1.6);
+    S.actionPoints=S.maxAP;
+    S.madness=Math.max(0,S.madness-20);
+    updateMadVisual();
+    S.curseCount=Math.floor(S.curseCount/2);
+    generateMap();
+    renderHUD();
+    $('harbor').classList.add('hidden');
+    $('game').classList.remove('hidden');
+    renderMap();
+    bus=false;
+    openModal('📜 进入第 '+S.period+' 期',
+      '<p style="text-align:center;color:#d9a441;font-size:18px">新债务：'+S.debt+' 金币</p>'+
+      '<p style="text-align:center;color:#8fa8bd;font-size:12px;margin-top:8px">海图已重新生成</p>'+
+      '<button class="opt-btn" onclick="closeModal()"><span class="ot">开始</span></button>');
+  }else{
+    bus=false;
+    gameOver('沉 湖','第 '+S.period+' 期债务到期。\n\n你需要 '+S.debt+' 金币，但口袋里只有 '+S.money+'。\n\n催债人把你绑上石头，推入了港口外的黑水。\n最后你看见的，是水面上晃动的灯笼——\n以及更深处，一双正在缓缓睁开的眼睛。');
+  }
+}
+
+function gameOver(title,text){
+  S.gameOver=true;
+  bus=true;
+  $('battle').classList.add('hidden');
+  $('harbor').classList.add('hidden');
+  $('game').classList.add('hidden');
+  $('modal').classList.add('hidden');
+  $('endTitle').textContent=title;
+  $('endText').textContent=text;
+  $('ending').classList.remove('hidden');
+}
+
+function openModal(title,html){
+  $('mTitle').textContent=title;
+  $('mBody').innerHTML=html;
+  $('modal').classList.remove('hidden');
+}
+function closeModal(){$('modal').classList.add('hidden')}
+
+function addCurse(){
+  var curses=['chenzhong','shikong','huanjue','shoudou','chenlun','niY','kong','mao','kunhuo','kongju'];
+  S.deck.push(pick(curses));
+  S.curseCount++;
+}
+
+/* =========================================================
+   开场
+   ========================================================= */
+var INTRO=[
+  {t:'你曾经是个赌徒。',c:'b'},
+  {t:'骰子、牌九、轮盘——你赢过，也输过。'},
+  {t:'直到那一夜，你输光了所有。',c:'b'},
+  {t:'房子、车子、女儿的学费，都成了桌上一堆无用的筹码。'},
+  {t:'然后你签下了那张借据。',c:'b'},
+  {t:'本金。利息。逾期一天，翻一倍。'},
+  {t:'三年后。',c:'b'},
+  {t:'你站在一艘随时会散架的破船上。'},
+  {t:'催债人给了你两个选择——'},
+  {t:'七天之内，赚到三百金币。',c:'r'},
+  {t:'或者——',c:'r'},
+  {t:'他们指了指船舷外。',c:'r'},
+  {t:'海很平静。',c:'b'},
+  {t:'平静得不像话。',c:'b'}
+];
+function runIntro(done){
+  var box=$('introText');
+  var idx=0;
+  var finished=false;
+  function finish(){
+    if(finished)return;
+    finished=true;
+    var intro=$('intro');
+    intro.style.transition='opacity .6s';
+    intro.style.opacity='0';
+    setTimeout(function(){
+      intro.style.display='none';
+      if(done)done();
+    },620);
+  }
+  function show(){
+    if(finished)return;
+    if(idx>=INTRO.length){setTimeout(finish,700);return}
+    var l=INTRO[idx++];
+    var el=document.createElement('div');
+    el.className='iline '+(l.c||'');
+    el.textContent=l.t;
+    box.appendChild(el);
+    void el.offsetWidth;
+    el.classList.add('on');
+    setTimeout(show,1300);
+  }
+  $('intro').addEventListener('click',function(){
+    if(finished)return;
+    if(idx<INTRO.length){
+      while(idx<INTRO.length){
+        var l=INTRO[idx++];
+        var el=document.createElement('div');
+        el.className='iline '+(l.c||'');
+        el.textContent=l.t;
+        box.appendChild(el);
+        void el.offsetWidth;
+        el.classList.add('on');
+      }
+    }
+    setTimeout(finish,500);
+  });
+  setTimeout(show,600);
+}
+
+var CHARACTERS=[
+  {id:'abuser',name:'家 暴 者',tag:'· 臭名昭著 ·',av:'👊',cls:'c1',
+   desc:'一个连街坊都绕着走的男人。你打跑过三个妻子，打怕过一双儿女。'},
+  {id:'holder',name:'憋 尿 王',tag:'· 赌场传说 ·',av:'🪣',cls:'c2',
+   desc:'赌场里的一个古老传说。不吃、不喝、不睡，能连着坐三天三夜。'},
+  {id:'madman',name:'疯 子',tag:'· 家破人亡 ·',av:'🌀',cls:'c3',
+   desc:'家破人亡那天你就已经疯了。妻离子散那天你彻底疯了。'}
+];
+function runSelect(done){
+  var intro=$('intro');
+  intro.style.display='none';
+  intro.style.opacity='0';
+  var el=$('charList');
+  el.innerHTML='';
+  var selected=null;
+  for(var i=0;i<CHARACTERS.length;i++){
+    (function(c){
+      var card=document.createElement('div');
+      card.className='char '+c.cls;
+      card.innerHTML='<div class="char-av">'+c.av+'</div>'+
+        '<div class="char-name">'+c.name+'</div>'+
+        '<div class="char-tag">'+c.tag+'</div>'+
+        '<div class="char-desc">'+c.desc+'</div>';
+      card.onclick=function(){
+        var all=el.querySelectorAll('.char');
+        for(var k=0;k<all.length;k++)all[k].classList.remove('sel');
+        card.classList.add('sel');
+        selected=c;
+        $('confirmBtn').classList.add('on');
+      };
+      el.appendChild(card);
+    })(CHARACTERS[i]);
+  }
+  $('confirmBtn').onclick=function(){
+    if(!selected)return;
+    S.charId=selected.id;
+    $('select').classList.add('hidden');
+    if(done)done();
+  };
+  $('select').classList.remove('hidden');
+}
+
+function startGame(){
+  initState();
+  if(!S.charId)S.charId='abuser';
+  initDeck();
+  generateMap();
+  renderHUD();
+  $('game').classList.remove('hidden');
+  renderMap();
+  $('btnHarbor').onclick=openHarbor;
+  $('btnCargo').onclick=openCargoModal;
+  $('btnDeck').onclick=function(){
+    var html='<div class="cargo-list">';
+    for(var i=0;i<S.deck.length;i++){
+      var c=CARDS[S.deck[i]];
+      if(!c)continue;
+      html+='<div class="cargo-list-item"><span>'+c.name+' <span style="color:#6a8098;font-size:11px">'+c.cost+' 费</span></span><span style="color:#7a8fa2;font-size:11px">'+c.text+'</span></div>';
+    }
+    html+='</div>';
+    openModal('🎴 牌组（'+S.deck.length+' 张）',html);
+  };
+  $('btnBag').onclick=openBagModal;
+  $('btnStats').onclick=function(){
+    var html='<p style="line-height:2;color:#a8bccd">期数：'+S.period+'<br>金币：'+S.money+'<br>债务：'+S.debt+'<br>疯狂：'+Math.round(S.madness)+'<br>完整度：'+S.hp+'/'+S.maxHp+'<br>牌组：'+S.deck.length+' 张<br>货舱：'+S.cargo.length+' 条</p>';
+    openModal('📊 统计',html);
+  };
+  $('btnRetreat').onclick=function(){
+    if(!BATTLE||!BATTLE.isBoss)return;
+    if(!confirm('撤退将失去 Boss 奖励。确定？'))return;
+    BATTLE=null;
+    $('battle').classList.add('hidden');
+    $('game').classList.remove('hidden');
+    bus=false;
+    S.actionPoints--;
+    renderHUD();renderMap();
+  };
+  $('btnEndTurn').onclick=endTurn;
+  window.addEventListener('resize',function(){
+    if(S.map&&!$('game').classList.contains('hidden'))renderMap();
+  });
+}
+
+window.addEventListener('load',function(){
+  runIntro(function(){
+    runSelect(function(){
+      startGame();
+    });
+  });
+});
+</script>
+</body>
+</html>
